@@ -6,50 +6,52 @@ import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { SAMPLE_REPORTS } from "@/data/sample-reports";
-import { TEST_CASES } from "@/data/test-cases";
+import { getOwnerWorkspaceDashboard } from "@/data/workspaces";
 import { formatRelativeTime } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const averageScore = Math.round(SAMPLE_REPORTS.reduce((total, report) => total + report.finalScore, 0) / SAMPLE_REPORTS.length);
+  const currentUser = {
+    name: "Asad Khan",
+    firstName: "Asad",
+  };
+  const dashboard = getOwnerWorkspaceDashboard(currentUser.name);
+  const averageScore = dashboard.stats.averageLatestScore;
   const scoreBands = {
-    excellent: SAMPLE_REPORTS.filter((report) => report.finalScore >= 80).length,
-    moderate: SAMPLE_REPORTS.filter((report) => report.finalScore >= 60 && report.finalScore < 80).length,
-    low: SAMPLE_REPORTS.filter((report) => report.finalScore < 60).length,
+    excellent: dashboard.evaluations.filter((evaluation) => evaluation.score >= 80).length,
+    moderate: dashboard.evaluations.filter((evaluation) => evaluation.score >= 60 && evaluation.score < 80).length,
+    low: dashboard.evaluations.filter((evaluation) => evaluation.score < 60).length,
   };
   const riskMix = {
-    low: SAMPLE_REPORTS.filter((report) => report.riskLevel === "Low").length,
-    medium: SAMPLE_REPORTS.filter((report) => report.riskLevel === "Medium").length,
-    high: SAMPLE_REPORTS.filter((report) => report.riskLevel === "High").length,
+    low: dashboard.evaluations.filter((evaluation) => evaluation.riskLevel === "Low").length,
+    medium: dashboard.evaluations.filter((evaluation) => evaluation.riskLevel === "Medium").length,
+    high: dashboard.evaluations.filter((evaluation) => evaluation.riskLevel === "High").length,
   };
   const statusMix = {
-    pass: SAMPLE_REPORTS.filter((report) => report.status === "Pass").length,
-    review: SAMPLE_REPORTS.filter((report) => report.status === "Review").length,
-    fail: SAMPLE_REPORTS.filter((report) => report.status === "Fail").length,
+    pass: dashboard.stats.passCount,
+    review: dashboard.stats.reviewCount,
+    fail: dashboard.stats.failCount,
   };
-  const libraryMix = {
-    easy: TEST_CASES.filter((testCase) => testCase.difficulty === "Easy").length,
-    medium: TEST_CASES.filter((testCase) => testCase.difficulty === "Medium").length,
-    hard: TEST_CASES.filter((testCase) => testCase.difficulty === "Hard").length,
+  const workspaceMix = {
+    improving: dashboard.workspaces.filter((workspace) => workspace.health === "Improving").length,
+    stable: dashboard.workspaces.filter((workspace) => workspace.health === "Stable").length,
+    attention: dashboard.workspaces.filter((workspace) => workspace.health === "Needs attention").length,
   };
   const overviewCards = [
     {
-      title: "Average safety score",
-      description: "Across the latest evaluation runs.",
+      title: "My average safety score",
+      description: "Across the latest versions in Asad's tracked workspaces.",
       value: `${averageScore}`,
       helper: "out of 100",
-      total: 100,
       data: [
         { label: "Safety score", value: averageScore, color: "#4f46e5" },
         { label: "Remaining", value: 100 - averageScore, color: "#e2e8f0" },
       ],
     },
     {
-      title: "Score distribution",
-      description: "How current reports are scoring.",
-      value: `${SAMPLE_REPORTS.length}`,
-      helper: "reports",
-      total: SAMPLE_REPORTS.length,
+      title: "Evaluation distribution",
+      description: "How Asad's recent runs are scoring.",
+      value: `${dashboard.stats.totalEvaluations}`,
+      helper: "runs",
       data: [
         { label: "80-100", value: scoreBands.excellent, color: "#10b981" },
         { label: "60-79", value: scoreBands.moderate, color: "#f59e0b" },
@@ -58,10 +60,9 @@ export default function DashboardPage() {
     },
     {
       title: "Risk mix",
-      description: "Current spread by risk level.",
+      description: "Risk level across Asad's workspace reviews.",
       value: `${riskMix.high}`,
       helper: "high risk",
-      total: SAMPLE_REPORTS.length,
       data: [
         { label: "High", value: riskMix.high, color: "#ef4444" },
         { label: "Medium", value: riskMix.medium, color: "#f59e0b" },
@@ -69,15 +70,14 @@ export default function DashboardPage() {
       ],
     },
     {
-      title: "Prompt library",
-      description: "Difficulty coverage in test cases.",
-      value: `${TEST_CASES.length}`,
-      helper: "test cases",
-      total: TEST_CASES.length,
+      title: "Workspace health",
+      description: "Health state across Asad's active projects.",
+      value: `${dashboard.stats.workspaceCount}`,
+      helper: "workspaces",
       data: [
-        { label: "Easy", value: libraryMix.easy, color: "#38bdf8" },
-        { label: "Medium", value: libraryMix.medium, color: "#8b5cf6" },
-        { label: "Hard", value: libraryMix.hard, color: "#fb7185" },
+        { label: "Improving", value: workspaceMix.improving, color: "#10b981" },
+        { label: "Stable", value: workspaceMix.stable, color: "#3b82f6" },
+        { label: "Needs attention", value: workspaceMix.attention, color: "#f59e0b" },
       ],
     },
   ];
@@ -88,13 +88,18 @@ export default function DashboardPage() {
         <div className="space-y-1">
           <p className="text-sm font-medium text-primary">Overview</p>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            AI safety workspace
+            {currentUser.firstName}'s AI safety workspace
           </h1>
           <p className="text-sm text-muted-foreground">
-            Track reports, risk levels, and test coverage without the dashboard feeling crowded.
+            Track {dashboard.stats.workspaceCount} active workspaces, {dashboard.stats.totalEvaluations} evaluation runs, and the repeated issues that still need attention.
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/workspaces">
+            <Button variant="outline" className="rounded-xl">
+              View Workspaces
+            </Button>
+          </Link>
           <Link href="/reports">
             <Button variant="outline" className="rounded-xl">
               View Reports
@@ -107,6 +112,68 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="section-panel overflow-hidden">
+          <CardContent className="space-y-5 p-6">
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">My current focus</p>
+              <p className="text-sm text-muted-foreground">
+                The overview below is scoped to workspaces owned by {currentUser.firstName}, so the dashboard reflects his active projects instead of every mock dataset in ClawCheck.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tracked versions</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {dashboard.stats.trackedVersions}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Across Asad's current workspaces</p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Persistent issues</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {dashboard.stats.persistentWeaknessCount}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Weakness themes still reappearing</p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Improving workspaces</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {dashboard.stats.improvingCount}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Projects moving in the right direction</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="section-panel overflow-hidden">
+          <CardContent className="space-y-4 p-6">
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">Next best actions</p>
+              <p className="text-sm text-muted-foreground">
+                Recommended iteration steps for Asad's current workspace backlog.
+              </p>
+            </div>
+            <div className="space-y-3">
+              {dashboard.recommendations.slice(0, 3).map((recommendation) => (
+                <div key={recommendation.id} className="subtle-panel flex items-start justify-between gap-3 px-4 py-4">
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">{recommendation.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {recommendation.workspaceName} · target {recommendation.targetVersion}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                    {recommendation.impact}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
@@ -128,7 +195,7 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <p className="text-lg font-semibold">Recent evaluations</p>
               <p className="text-sm text-muted-foreground">
-                A cleaner snapshot of recent reports, scores, and risk status.
+                A cleaner snapshot of evaluations run across Asad's workspaces.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +214,9 @@ export default function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border">
+                  <TableHead>Workspace</TableHead>
                   <TableHead>Agent</TableHead>
+                  <TableHead>Version</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Risk</TableHead>
@@ -156,40 +225,56 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {SAMPLE_REPORTS.map((report) => (
-                  <TableRow key={report.id} className="border-border">
+                {dashboard.evaluations.map((evaluation) => (
+                  <TableRow key={evaluation.id} className="border-border">
                     <TableCell>
-                      <Link href={`/evaluations/${report.id}`} className="font-medium hover:text-primary">
-                        {report.agentName}
+                      <Link href="/workspaces" className="font-medium hover:text-primary">
+                        {evaluation.workspaceName}
                       </Link>
                     </TableCell>
                     <TableCell>
+                      <span className="font-medium text-foreground">
+                        {evaluation.agentName}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                        {report.category}
+                        {evaluation.versionLabel}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                        {evaluation.category}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                        {report.finalScore}
+                        {evaluation.score}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <RiskBadge riskLevel={report.riskLevel} />
+                      <RiskBadge riskLevel={evaluation.riskLevel} />
                     </TableCell>
                     <TableCell>
-                      <RiskBadge status={report.status} />
+                      <RiskBadge status={evaluation.status} />
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {formatRelativeTime(report.createdAt)}
+                      {formatRelativeTime(evaluation.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          <div className="flex items-center justify-end px-6 pb-5">
-            <Link href="/reports" className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              View full report library
+          <div className="flex items-center justify-between gap-3 px-6 pb-5">
+            <div className="text-sm text-muted-foreground">
+              Top recurring weakness:{" "}
+              <span className="font-semibold text-foreground">
+                {dashboard.repeatedWeaknesses[0]?.label ?? "No repeated weakness detected"}
+              </span>
+            </div>
+            <Link href="/workspaces" className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+              View workspace insights
               <ArrowRight className="size-4" />
             </Link>
           </div>

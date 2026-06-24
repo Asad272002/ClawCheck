@@ -494,6 +494,12 @@ export function getWorkspaceOverviewStats() {
   };
 }
 
+export function getWorkspacesForOwner(owner: string) {
+  const normalizedOwner = owner.trim().toLowerCase();
+
+  return WORKSPACES.filter((workspace) => workspace.owner.trim().toLowerCase() === normalizedOwner);
+}
+
 export function getGlobalWeaknesses() {
   return WORKSPACES.flatMap((workspace) =>
     workspace.repeatedWeaknesses.map((weakness) => ({
@@ -520,4 +526,55 @@ export function getUpcomingRecommendations() {
       health: workspace.health,
     }))
   ).sort((left, right) => IMPACT_ORDER[right.impact] - IMPACT_ORDER[left.impact]);
+}
+
+export function getOwnerWorkspaceDashboard(owner: string) {
+  const workspaces = getWorkspacesForOwner(owner);
+  const evaluations = workspaces.flatMap((workspace) =>
+    workspace.evaluations.map((evaluation) => ({
+      ...evaluation,
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
+      agentName: workspace.agentName,
+      versionLabel: workspace.versions.find((version) => version.id === evaluation.versionId)?.label ?? evaluation.versionId,
+    }))
+  );
+  const repeatedWeaknesses = workspaces.flatMap((workspace) =>
+    workspace.repeatedWeaknesses.map((weakness) => ({
+      ...weakness,
+      workspaceName: workspace.name,
+    }))
+  );
+  const recommendations = workspaces.flatMap((workspace) =>
+    workspace.nextRecommendations.map((recommendation) => ({
+      ...recommendation,
+      workspaceName: workspace.name,
+    }))
+  );
+  const latestScores = workspaces.map((workspace) => getWorkspaceSummary(workspace).latestScore);
+  const averageLatestScore =
+    latestScores.length > 0
+      ? Math.round(latestScores.reduce((total, score) => total + score, 0) / latestScores.length)
+      : 0;
+
+  return {
+    workspaces,
+    evaluations: evaluations.sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    ),
+    repeatedWeaknesses: repeatedWeaknesses.sort((left, right) => right.count - left.count),
+    recommendations,
+    stats: {
+      workspaceCount: workspaces.length,
+      trackedVersions: workspaces.reduce((total, workspace) => total + workspace.versions.length, 0),
+      totalEvaluations: evaluations.length,
+      averageLatestScore,
+      highRiskRuns: evaluations.filter((evaluation) => evaluation.riskLevel === "High").length,
+      passCount: evaluations.filter((evaluation) => evaluation.status === "Pass").length,
+      reviewCount: evaluations.filter((evaluation) => evaluation.status === "Review").length,
+      failCount: evaluations.filter((evaluation) => evaluation.status === "Fail").length,
+      improvingCount: workspaces.filter((workspace) => workspace.health === "Improving").length,
+      persistentWeaknessCount: repeatedWeaknesses.filter((weakness) => weakness.trend === "Persistent").length,
+    },
+  };
 }

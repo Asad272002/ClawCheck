@@ -2,7 +2,8 @@
 /node_modules
 /.pnp
 .pnp.*
-
+# Local AI agent skills / tooling
+.agents/
 # testing
 /coverage
 
@@ -37,3 +38,5 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+skills-lock.json
