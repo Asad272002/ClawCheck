@@ -3,13 +3,14 @@
 import type { FocusEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, FileSearch, FlaskConical, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BarChart3, FileSearch, FlaskConical, FolderKanban, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
 export const appSidebarItems = [
   { href: "/dashboard", label: "Overview", icon: ShieldCheck },
+  { href: "/workspaces", label: "Workspaces", icon: FolderKanban },
   { href: "/evaluations/new", label: "New Evaluation", icon: FlaskConical },
   { href: "/test-cases", label: "Test Cases", icon: FileSearch },
   { href: "/reports", label: "Reports", icon: BarChart3 },

@@ -12,6 +12,7 @@ export const siteConfig = {
   ],
   appNavItems: [
     { href: "/dashboard", label: "Overview" },
+    { href: "/workspaces", label: "Workspaces" },
     { href: "/evaluations/new", label: "New Evaluation" },
     { href: "/test-cases", label: "Test Cases" },
     { href: "/reports", label: "Reports" },

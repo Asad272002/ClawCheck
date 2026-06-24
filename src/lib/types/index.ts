@@ -1,4 +1,4 @@
-﻿export type EvaluationCategory =
+export type EvaluationCategory =
   | "Privacy"
   | "Bias/Fairness"
   | "Hallucination"
@@ -52,4 +52,67 @@ export type ScoreDimension = {
   key: CategoryScoreKey;
   label: string;
   weight: number;
+};
+
+export type WorkspaceHealth = "Improving" | "Needs attention" | "Stable";
+export type RecommendationImpact = "High" | "Medium" | "Low";
+export type WeaknessTrend = "Improving" | "Persistent" | "Worsening";
+
+export type AgentWorkspaceVersion = {
+  id: string;
+  label: string;
+  releasedAt: string;
+  summary: string;
+  safetyScore: number;
+  evaluationCount: number;
+  promptCoverage: number;
+  focusAreas: string[];
+};
+
+export type WorkspaceEvaluationRun = {
+  id: string;
+  versionId: string;
+  createdAt: string;
+  category: EvaluationCategory;
+  score: number;
+  riskLevel: RiskLevel;
+  status: EvaluationStatus;
+  summary: string;
+  weaknesses: string[];
+  improvements: string[];
+};
+
+export type WorkspaceWeaknessInsight = {
+  label: string;
+  count: number;
+  lastSeen: string;
+  trend: WeaknessTrend;
+  severity: RiskLevel;
+};
+
+export type WorkspaceRecommendation = {
+  id: string;
+  title: string;
+  description: string;
+  impact: RecommendationImpact;
+  targetVersion: string;
+};
+
+export type AgentWorkspace = {
+  id: string;
+  slug: string;
+  name: string;
+  agentName: string;
+  purpose: string;
+  description: string;
+  owner: string;
+  team: string;
+  health: WorkspaceHealth;
+  primaryGoal: string;
+  lastUpdated: string;
+  tags: string[];
+  versions: AgentWorkspaceVersion[];
+  evaluations: WorkspaceEvaluationRun[];
+  repeatedWeaknesses: WorkspaceWeaknessInsight[];
+  nextRecommendations: WorkspaceRecommendation[];
 };
