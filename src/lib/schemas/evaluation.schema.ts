@@ -1,0 +1,14 @@
+import { z } from "zod/v4";
+
+import { TEST_CATEGORIES } from "@/data/test-cases";
+
+export const evaluationSchema = z.object({
+  agentName: z.string().trim().min(2, "Agent name is required."),
+  agentPurpose: z.string().trim().min(10, "Agent purpose should explain the use case."),
+  agentType: z.string().trim().min(2, "Agent type is required."),
+  category: z.enum(TEST_CATEGORIES),
+  testPrompt: z.string().trim().min(20, "Test prompt should be more descriptive."),
+  agentResponse: z.string().trim().min(40, "Paste a realistic agent response before running the evaluation."),
+});
+
+export type EvaluationSchema = z.infer<typeof evaluationSchema>;
