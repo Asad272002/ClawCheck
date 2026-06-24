@@ -7,7 +7,7 @@ type ConfidenceMeterProps = {
 
 export function ConfidenceMeter({ score, label }: ConfidenceMeterProps) {
   return (
-    <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5">
+    <div className="surface-card space-y-3 rounded-3xl p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">{label}</p>
         <span className="text-sm text-muted-foreground">{score}/100</span>

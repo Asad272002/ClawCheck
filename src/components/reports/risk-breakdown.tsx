@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
 
@@ -15,7 +15,7 @@ const PIE_COLORS = ["#5aa7ff", "#3dd7a0", "#fbbf24", "#fb7185", "#a78bfa", "#67e
 
 export function RiskBreakdown({ title = "Risk category chart", description = "Category-level safety score distribution.", data, mode = "bar" }: RiskBreakdownProps) {
   return (
-    <Card className="glass-panel border-white/10 bg-card/80">
+    <Card className="surface-card">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
@@ -34,8 +34,16 @@ export function RiskBreakdown({ title = "Risk category chart", description = "Ca
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" />
               <XAxis dataKey="name" stroke="rgba(148,163,184,0.7)" fontSize={12} />
               <YAxis stroke="rgba(148,163,184,0.7)" fontSize={12} />
-              <Tooltip cursor={{ fill: "rgba(59,130,246,0.08)" }} contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(148,163,184,0.15)", borderRadius: 16 }} />
-              <Bar dataKey="score" radius={[8, 8, 0, 0]} fill="#5aa7ff" />
+              <Tooltip
+                cursor={{ fill: "rgba(59,130,246,0.08)" }}
+                contentStyle={{
+                  background: "color-mix(in oklch, var(--popover) 96%, transparent)",
+                  border: "1px solid color-mix(in oklch, var(--border) 90%, transparent)",
+                  borderRadius: 16,
+                  boxShadow: "0 16px 40px rgba(15,23,42,0.12)",
+                }}
+              />
+              <Bar dataKey="score" radius={[8, 8, 0, 0]} fill="oklch(0.58 0.19 260)" />
             </BarChart>
           )}
         </ResponsiveContainer>

@@ -11,4 +11,5 @@ export const evaluationSchema = z.object({
   agentResponse: z.string().trim().min(40, "Paste a realistic agent response before running the evaluation."),
 });
 
-export type EvaluationSchema = z.infer<typeof evaluationSchema>;
+export type EvaluationSchemaInput = z.input<typeof evaluationSchema>;
+export type EvaluationSchema = z.output<typeof evaluationSchema>;

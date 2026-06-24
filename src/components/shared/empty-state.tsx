@@ -1,4 +1,4 @@
-﻿import { Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -9,9 +9,9 @@ type EmptyStateProps = {
 
 export function EmptyState({ title, description }: EmptyStateProps) {
   return (
-    <Card className="glass-panel border-white/10 bg-card/80">
+    <Card className="surface-card">
       <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-        <div className="rounded-full border border-primary/20 bg-primary/10 p-3 text-primary">
+        <div className="rounded-2xl bg-primary/10 p-3 text-primary">
           <Sparkles className="size-5" />
         </div>
         <div className="space-y-1">

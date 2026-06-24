@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { SceneBackground } from "@/components/shared/scene-background";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,13 +26,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-full">
         <ThemeProvider>
-          <div className="relative min-h-full">
-            <SceneBackground />
-            <TooltipProvider>
-              <div className="relative z-10">{children}</div>
-              <Toaster richColors />
-            </TooltipProvider>
-          </div>
+          <TooltipProvider>
+            <div className="relative min-h-full overflow-x-hidden">{children}</div>
+            <Toaster richColors />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

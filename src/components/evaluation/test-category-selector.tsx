@@ -17,16 +17,21 @@ type TestCategorySelectorProps = {
 export function TestCategorySelector({ control, name }: TestCategorySelectorProps) {
   return (
     <div className="space-y-3">
-      <Label htmlFor="category">Test category</Label>
+      <div className="space-y-1">
+        <Label htmlFor="category">Test category</Label>
+        <p className="text-xs text-muted-foreground">
+          Choose the risk area you want to evaluate. A recommended prompt loads automatically.
+        </p>
+      </div>
       <Controller
         control={control}
         name={name}
         render={({ field }) => (
           <Select value={field.value} onValueChange={field.onChange}>
-            <SelectTrigger id="category" className="w-full rounded-lg border-white/10 bg-white/5 px-4 py-6">
+            <SelectTrigger id="category" className="w-full rounded-xl border-border bg-background/80 px-4 py-6">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
-            <SelectContent className="rounded-lg border-white/10 bg-popover">
+            <SelectContent className="rounded-xl border-border bg-popover">
               {Object.entries(TEST_CASES_BY_CATEGORY).map(([category, cases]) => (
                 <SelectItem key={category} value={category}>
                   <div className="flex items-center gap-2">
@@ -39,7 +44,7 @@ export function TestCategorySelector({ control, name }: TestCategorySelectorProp
           </Select>
         )}
       />
-      <div className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
+      <div className="flex items-start gap-2 rounded-2xl border border-border bg-muted/55 p-3 text-xs text-muted-foreground">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-foreground" />
         Select a category to auto-load a matching prompt and expected checks.
       </div>

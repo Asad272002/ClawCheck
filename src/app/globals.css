@@ -54,15 +54,48 @@
   body {
     @apply min-h-screen bg-background font-sans text-foreground antialiased;
     background-image:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.94), transparent 26%),
-      radial-gradient(circle at right, rgba(229, 231, 235, 0.72), transparent 32%),
-      linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(244, 244, 245, 1));
+      radial-gradient(circle at top, rgba(99, 102, 241, 0.1), transparent 18%),
+      radial-gradient(circle at 85% 10%, rgba(59, 130, 246, 0.08), transparent 16%),
+      radial-gradient(circle at 20% 0%, rgba(16, 185, 129, 0.05), transparent 18%),
+      linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(246, 249, 252, 1));
+    color: var(--foreground);
+  }
+  .dark body {
+    background-image:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 20%),
+      radial-gradient(circle at right top, rgba(99, 102, 241, 0.14), transparent 24%),
+      linear-gradient(180deg, rgba(12, 17, 29, 1), rgba(17, 24, 39, 1));
+  }
+  a {
+    @apply transition-colors;
   }
   ::selection { background: color-mix(in oklch, var(--primary), transparent 50%); }
 }
 
 @layer utilities {
-  .container-shell { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .container-shell { @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8; }
+  .nav-shell {
+    @apply border-b border-border/80 bg-background/80 backdrop-blur-xl;
+  }
+  .surface-card {
+    @apply rounded-2xl border border-border/90 bg-card shadow-[0_10px_28px_rgba(15,23,42,0.06)];
+  }
+  .glass-panel {
+    @apply rounded-2xl border border-white/50 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/4;
+  }
+  .section-panel {
+    @apply rounded-[1.5rem] border border-border/80 bg-card/95 shadow-[0_18px_48px_rgba(15,23,42,0.07)];
+  }
+  .subtle-panel {
+    @apply rounded-2xl border border-border/80 bg-muted/55;
+  }
+  .hero-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklch, var(--border), transparent 70%) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklch, var(--border), transparent 72%) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+  }
   .border-gradient { position: relative; }
   .border-gradient::before {
     content: "";
@@ -75,5 +108,8 @@
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
+  }
+  .ring-blue {
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.08), 0 16px 40px rgba(79, 70, 229, 0.14);
   }
 }
