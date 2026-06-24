@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Target, TriangleAlert } from "lucide-react";
 
+import { InteractiveBlockGrid } from "@/components/marketing/interactive-block-grid";
 import { LandingVisual } from "@/components/marketing/landing-visual";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,7 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden pb-16 pt-14 sm:pb-20 sm:pt-16">
       <div className="hero-grid pointer-events-none absolute inset-x-0 top-0 h-[34rem]" />
+      <InteractiveBlockGrid />
       <div className="container-shell relative">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div className="space-y-6">

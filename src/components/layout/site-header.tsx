@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
@@ -35,6 +36,32 @@ import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY <= 24) {
+        setVisible(true);
+      } else if (currentScrollY > lastScrollY) {
+        setVisible(false);
+      } else {
+        setVisible(true);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   const isActive = (href: string) => {
     if (href === "/") {
       return pathname === "/";
@@ -45,15 +72,20 @@ export function SiteHeader() {
 
   return (
     <Sheet>
-      <header className="nav-shell sticky top-0 z-50">
+      <header
+        className={`nav-shell fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+          visible ? "translate-y-0 opacity-100" : "-translate-y-6 opacity-0 pointer-events-none"
+        }`}
+      >
         <div className="container-shell flex h-18 items-center gap-4">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl border border-border bg-card shadow-sm">
-              <Image src="/clawlogo-r.png" alt="ClawCheck logo" width={30} height={30} className="h-7 w-7 object-contain" />
+            <div className="relative flex size-12 items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-primary/12 blur-xl" />
+              <Image src="/clawlogo-r.png" alt="ClawCheck logo" width={38} height={38} className="relative h-9 w-9 object-contain drop-shadow-[0_8px_18px_rgba(37,99,235,0.28)]" />
             </div>
             <div className="min-w-0">
-              <div className="font-semibold tracking-tight">{siteConfig.name}</div>
-              <div className="truncate text-xs text-muted-foreground">AI safety evaluation toolkit</div>
+              <div className="text-[1.05rem] font-semibold tracking-tight text-foreground">{siteConfig.name}</div>
+              <div className="truncate text-xs font-medium text-primary/80">AI safety evaluation toolkit</div>
             </div>
           </Link>
 
