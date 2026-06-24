@@ -49,7 +49,7 @@ export function SiteHeader() {
         <div className="container-shell flex h-18 items-center gap-4">
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl border border-border bg-card shadow-sm">
-              <Image src="/assets/logo.svg" alt="ClawCheck logo" width={24} height={24} />
+              <Image src="/clawlogo-r.png" alt="ClawCheck logo" width={30} height={30} className="h-7 w-7 object-contain" />
             </div>
             <div className="min-w-0">
               <div className="font-semibold tracking-tight">{siteConfig.name}</div>

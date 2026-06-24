@@ -20,7 +20,7 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-6">
       <Sheet>
         <DashboardHeader
           mobileNavTrigger={
@@ -29,13 +29,11 @@ export function AppShell({ children }: AppShellProps) {
             </SheetTrigger>
           }
         />
-        <div className="container-shell flex gap-8 py-8">
-          <div className="hidden w-72 shrink-0 lg:block">
-            <div className="sticky top-24">
-              <AppSidebar />
-            </div>
+        <div className="container-shell pt-[5.5rem]">
+          <div className="hidden lg:block">
+            <AppSidebar className="fixed top-[5.5rem] left-[max(1rem,calc((100vw-1440px)/2+2rem))] z-40 h-[calc(100vh-6.5rem)] w-64 overflow-y-auto" />
           </div>
-          <main className="min-w-0 flex-1">{children}</main>
+          <main className="min-w-0 pb-4 lg:pl-[17.5rem]">{children}</main>
         </div>
         <SheetContent side="left" className="w-[88vw] max-w-sm border-r border-border bg-background p-0">
           <SheetHeader className="border-b border-border px-5 py-4">

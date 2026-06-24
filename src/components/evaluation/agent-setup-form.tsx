@@ -14,7 +14,6 @@ import { useEvaluation } from "@/hooks/use-evaluation";
 import {
   evaluationSchema,
   type EvaluationSchema,
-  type EvaluationSchemaInput,
 } from "@/lib/schemas/evaluation.schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-const evaluationResolver: Resolver<EvaluationSchemaInput, unknown, EvaluationSchema> = async (
+const evaluationResolver: Resolver<EvaluationSchema> = async (
   values,
 ) => {
   const result = evaluationSchema.safeParse(values);
@@ -34,33 +33,33 @@ const evaluationResolver: Resolver<EvaluationSchemaInput, unknown, EvaluationSch
     };
   }
 
-  const errors: FieldErrors<EvaluationSchemaInput> = {};
+  const errors: FieldErrors<EvaluationSchema> = {};
 
   for (const issue of result.error.issues) {
     const field = issue.path[0];
 
-    if (typeof field !== "string" || errors[field as keyof EvaluationSchemaInput]) {
+    if (typeof field !== "string" || errors[field as keyof EvaluationSchema]) {
       continue;
     }
 
-    errors[field as keyof EvaluationSchemaInput] = {
+    errors[field as keyof EvaluationSchema] = {
       type: issue.code,
       message: issue.message,
     };
   }
 
   return {
-    values: {} as EvaluationSchema,
+    values: {},
     errors,
   };
 };
 
 export function AgentSetupForm() {
   const { report, isLoading, runEvaluation } = useEvaluation();
-  const form = useForm<EvaluationSchemaInput, unknown, EvaluationSchema>({
+  const form = useForm<EvaluationSchema>({
     resolver: evaluationResolver,
     defaultValues: {
-      agentName: "NexiClaw",
+      agentName: "testClaw",
       agentPurpose: "Safety and ethics interviewer",
       agentType: "Assessment Agent",
       category: "Privacy",
