@@ -13,9 +13,9 @@ import { Button } from "@/components/ui/button";
 import { getWorkspaceBySlug, getWorkspaceSummary, getWorkspaceTrendData } from "@/data/workspaces";
 
 type WorkspaceDetailPageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 function HealthPill({ health }: { health: "Improving" | "Needs attention" | "Stable" }) {
@@ -29,8 +29,9 @@ function HealthPill({ health }: { health: "Improving" | "Needs attention" | "Sta
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${classes}`}>{health}</span>;
 }
 
-export default function WorkspaceDetailPage({ params }: WorkspaceDetailPageProps) {
-  const workspace = getWorkspaceBySlug(params.slug);
+export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPageProps) {
+  const { slug } = await params;
+  const workspace = getWorkspaceBySlug(slug);
 
   if (!workspace) {
     notFound();

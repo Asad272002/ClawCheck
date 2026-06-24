@@ -33,16 +33,16 @@ export function AppShell({ children }: AppShellProps) {
             </SheetTrigger>
           }
         />
-        <div className="container-shell pt-[5.5rem]">
+        <div className="container-shell pt-[6.5rem]">
           <div className="hidden lg:block">
             <AppSidebar
               expanded={sidebarExpanded}
               onExpandedChange={setSidebarExpanded}
-              className="fixed top-[5.5rem] left-[max(1rem,calc((100vw-1440px)/2+2rem))] z-40 h-[calc(100vh-6.5rem)] overflow-y-auto"
+              className="fixed top-[6.25rem] left-[max(1rem,calc((100vw-1440px)/2+2rem))] z-40 h-[calc(100vh-7.25rem)] overflow-y-auto"
             />
           </div>
           <main
-            className={`min-w-0 pb-4 transition-[padding] duration-300 ${
+            className={`min-w-0 pb-4 pt-3 transition-[padding] duration-300 ${
               sidebarExpanded ? "lg:pl-[17.5rem]" : "lg:pl-[6.25rem]"
             }`}
           >

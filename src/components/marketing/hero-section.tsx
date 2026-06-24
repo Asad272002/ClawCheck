@@ -15,7 +15,7 @@ const heroMetrics = [
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden pb-16 pt-14 sm:pb-20 sm:pt-16">
+    <section className="relative overflow-hidden pb-16 pt-28 sm:pb-20 sm:pt-32">
       <div className="hero-grid pointer-events-none absolute inset-x-0 top-0 h-[34rem]" />
       <InteractiveBlockGrid />
       <div className="container-shell relative">

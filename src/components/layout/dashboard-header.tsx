@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, CircleUserRound, PanelLeft, Settings, Sparkles, User } from "lucide-react";
+import { ChevronDown, CircleUserRound, PanelLeft, Settings, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -81,12 +81,6 @@ export function DashboardHeader({
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link href="/evaluations/new">
-              <Button size="sm" className="rounded-xl px-3 sm:px-4">
-                <Sparkles className="size-4" />
-                <span className="hidden sm:inline">New Evaluation</span>
-              </Button>
-            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border border-border/80 bg-card/90 px-2 py-1.5 text-sm shadow-sm transition hover:bg-accent">
                 <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
