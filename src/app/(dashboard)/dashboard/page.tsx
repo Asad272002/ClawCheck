@@ -6,15 +6,16 @@ import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getOwnerWorkspaceDashboard } from "@/data/workspaces";
+import { fetchWorkspaces, getOwnerWorkspaceDashboard } from "@/lib/db/workspaces";
 import { formatRelativeTime } from "@/lib/utils";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   const currentUser = {
     name: "Asad Khan",
     firstName: "Asad",
   };
-  const dashboard = getOwnerWorkspaceDashboard(currentUser.name);
+  const workspaces = await fetchWorkspaces();
+  const dashboard = getOwnerWorkspaceDashboard(currentUser.name, workspaces);
   const averageScore = dashboard.stats.averageLatestScore;
   const scoreBands = {
     excellent: dashboard.evaluations.filter((evaluation) => evaluation.score >= 80).length,

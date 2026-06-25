@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { Difficulty } from "@/lib/types";
-import type { TestCase } from "@/data/test-cases";
+import type { Difficulty, TestCase } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type TestCaseLibraryProps = {

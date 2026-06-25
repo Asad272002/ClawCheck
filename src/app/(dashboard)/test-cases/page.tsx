@@ -1,10 +1,11 @@
 import { TestCaseLibrary } from "@/components/evaluation/test-case-library";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
-import { TEST_CASES_BY_CATEGORY } from "@/data/test-cases";
+import { getGroupedTestCases } from "@/lib/db/test-cases";
 
-export default function TestCasesPage() {
-  const categories = Object.entries(TEST_CASES_BY_CATEGORY);
+export default async function TestCasesPage() {
+  const groupedTestCases = await getGroupedTestCases();
+  const categories = Object.entries(groupedTestCases);
 
   return (
     <div className="space-y-8">

@@ -1,8 +1,8 @@
 import { Sparkles } from "lucide-react";
 
-import type { TestCase } from "@/data/test-cases";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { TestCase } from "@/lib/types";
 
 type TestPromptCardProps = {
   testCase?: TestCase;

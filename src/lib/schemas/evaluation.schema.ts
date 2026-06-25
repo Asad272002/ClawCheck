@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 
-import { TEST_CATEGORIES } from "@/data/test-cases";
+import { TEST_CATEGORIES } from "@/lib/constants/evaluation";
 
 export const evaluationSchema = z.object({
   agentName: z.string().trim().min(2, "Agent name is required."),

@@ -6,7 +6,7 @@ import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getLatestWorkspaceVersion, getWorkspaceSummary } from "@/data/workspaces";
+import { getLatestWorkspaceVersion, getWorkspaceSummary } from "@/lib/db/workspaces";
 import type { AgentWorkspace } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils";
 

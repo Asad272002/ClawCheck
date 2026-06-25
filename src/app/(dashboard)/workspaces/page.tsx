@@ -6,17 +6,18 @@ import { WorkspaceCard } from "@/components/workspaces/workspace-card";
 import { PageHeading } from "@/components/shared/page-heading";
 import { Button } from "@/components/ui/button";
 import {
+  fetchWorkspaces,
   getGlobalWeaknesses,
   getUpcomingRecommendations,
   getWorkspaceOverviewStats,
-  WORKSPACES,
-} from "@/data/workspaces";
+} from "@/lib/db/workspaces";
 
-const overviewStats = getWorkspaceOverviewStats();
-const weaknessHotspots = getGlobalWeaknesses().slice(0, 4);
-const upcomingRecommendations = getUpcomingRecommendations().slice(0, 4);
+export default async function WorkspacesPage() {
+  const workspaces = await fetchWorkspaces();
+  const overviewStats = getWorkspaceOverviewStats(workspaces);
+  const weaknessHotspots = getGlobalWeaknesses(workspaces).slice(0, 4);
+  const upcomingRecommendations = getUpcomingRecommendations(workspaces).slice(0, 4);
 
-export default function WorkspacesPage() {
   return (
     <div className="space-y-8">
       <PageHeading
@@ -108,7 +109,7 @@ export default function WorkspacesPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {WORKSPACES.map((workspace) => (
+        {workspaces.map((workspace) => (
           <WorkspaceCard key={workspace.id} workspace={workspace} />
         ))}
       </div>

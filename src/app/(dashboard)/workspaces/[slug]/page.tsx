@@ -10,7 +10,12 @@ import { WorkspaceWeaknessInsights } from "@/components/workspaces/workspace-wea
 import { PageHeading } from "@/components/shared/page-heading";
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
-import { getWorkspaceBySlug, getWorkspaceSummary, getWorkspaceTrendData } from "@/data/workspaces";
+import {
+  fetchWorkspaces,
+  findWorkspaceBySlug,
+  getWorkspaceSummary,
+  getWorkspaceTrendData,
+} from "@/lib/db/workspaces";
 
 type WorkspaceDetailPageProps = {
   params: Promise<{
@@ -31,7 +36,8 @@ function HealthPill({ health }: { health: "Improving" | "Needs attention" | "Sta
 
 export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPageProps) {
   const { slug } = await params;
-  const workspace = getWorkspaceBySlug(slug);
+  const workspaces = await fetchWorkspaces();
+  const workspace = findWorkspaceBySlug(workspaces, slug);
 
   if (!workspace) {
     notFound();

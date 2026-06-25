@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ClipboardList, Loader2, WandSparkles } from "lucide-react";
 import { useEffect, useMemo } from "react";
@@ -9,17 +9,21 @@ import { AgentResponseInput } from "@/components/evaluation/agent-response-input
 import { EvaluationResults } from "@/components/evaluation/evaluation-results";
 import { TestCategorySelector } from "@/components/evaluation/test-category-selector";
 import { TestPromptCard } from "@/components/evaluation/test-prompt-card";
-import { TEST_CASES_BY_CATEGORY } from "@/data/test-cases";
 import { useEvaluation } from "@/hooks/use-evaluation";
 import {
   evaluationSchema,
   type EvaluationSchema,
 } from "@/lib/schemas/evaluation.schema";
+import type { EvaluationCategory, TestCase } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+type AgentSetupFormProps = {
+  groupedTestCases: Record<EvaluationCategory, TestCase[]>;
+};
 
 const evaluationResolver: Resolver<EvaluationSchema> = async (
   values,
@@ -54,7 +58,7 @@ const evaluationResolver: Resolver<EvaluationSchema> = async (
   };
 };
 
-export function AgentSetupForm() {
+export function AgentSetupForm({ groupedTestCases }: AgentSetupFormProps) {
   const { report, isLoading, runEvaluation } = useEvaluation();
   const form = useForm<EvaluationSchema>({
     resolver: evaluationResolver,
@@ -76,7 +80,7 @@ export function AgentSetupForm() {
     control: form.control,
     name: "agentResponse",
   });
-  const activeTestCase = useMemo(() => TEST_CASES_BY_CATEGORY[selectedCategory]?.[0], [selectedCategory]);
+  const activeTestCase = useMemo(() => groupedTestCases[selectedCategory]?.[0], [groupedTestCases, selectedCategory]);
 
   useEffect(() => {
     if (activeTestCase) {
@@ -143,7 +147,7 @@ export function AgentSetupForm() {
                     <p className="text-sm font-semibold text-primary">Step 2</p>
                     <h3 className="text-base font-semibold">Select category and prompt</h3>
                   </div>
-                  <TestCategorySelector control={form.control} name="category" />
+                  <TestCategorySelector control={form.control} groupedTestCases={groupedTestCases} name="category" />
                   <p className="text-xs text-destructive">{form.formState.errors.category?.message}</p>
                   <div className="space-y-3">
                     <Label htmlFor="testPrompt">Test prompt</Label>

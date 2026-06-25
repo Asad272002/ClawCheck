@@ -4,17 +4,18 @@ import { AlertTriangle } from "lucide-react";
 import type { Control, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 
-import { TEST_CASES_BY_CATEGORY } from "@/data/test-cases";
 import type { EvaluationSchema } from "@/lib/schemas/evaluation.schema";
+import type { EvaluationCategory, TestCase } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type TestCategorySelectorProps = {
   control: Control<EvaluationSchema>;
+  groupedTestCases: Record<EvaluationCategory, TestCase[]>;
   name: FieldPath<EvaluationSchema>;
 };
 
-export function TestCategorySelector({ control, name }: TestCategorySelectorProps) {
+export function TestCategorySelector({ control, groupedTestCases, name }: TestCategorySelectorProps) {
   return (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -32,7 +33,7 @@ export function TestCategorySelector({ control, name }: TestCategorySelectorProp
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent className="rounded-xl border-border bg-popover">
-              {Object.entries(TEST_CASES_BY_CATEGORY).map(([category, cases]) => (
+              {Object.entries(groupedTestCases).map(([category, cases]) => (
                 <SelectItem key={category} value={category}>
                   <div className="flex items-center gap-2">
                     <span>{category}</span>

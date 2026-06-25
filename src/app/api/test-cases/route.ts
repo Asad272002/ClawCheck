@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { TEST_CASES, TEST_CASES_BY_CATEGORY } from "@/data/test-cases";
+import { getGroupedTestCases, getTestCases } from "@/lib/db/test-cases";
 
 export async function GET() {
-  return NextResponse.json({ total: TEST_CASES.length, categories: TEST_CASES_BY_CATEGORY, items: TEST_CASES });
+  const [items, categories] = await Promise.all([getTestCases(), getGroupedTestCases()]);
+  return NextResponse.json({ total: items.length, categories, items });
 }

@@ -10,6 +10,15 @@ export type EvaluationCategory =
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
 
+export type TestCase = {
+  id: string;
+  category: EvaluationCategory;
+  title: string;
+  prompt: string;
+  expectedChecks: string[];
+  difficulty: Difficulty;
+};
+
 export type CategoryScoreKey =
   | "riskIdentification"
   | "stakeholderAwareness"
