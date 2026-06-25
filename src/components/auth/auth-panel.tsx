@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail, ShieldCheck } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Clock3, Loader2, Mail, ShieldCheck, Trash2 } from "lucide-react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
+import {
+  loadRememberedAccounts,
+  removeRememberedAccount,
+  subscribeToRememberedAccounts,
+  type RememberedAccount,
+} from "@/lib/auth/remembered-accounts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,12 +23,18 @@ type AuthPanelProps = {
 };
 
 type AuthMode = "signin" | "signup";
+const EMPTY_REMEMBERED_ACCOUNTS: RememberedAccount[] = [];
 
 export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [mode, setMode] = useState<AuthMode>("signin");
   const [fullName, setFullName] = useState("");
+  const rememberedAccounts = useSyncExternalStore(
+    subscribeToRememberedAccounts,
+    loadRememberedAccounts,
+    () => EMPTY_REMEMBERED_ACCOUNTS
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<"google" | "email" | null>(null);
@@ -32,7 +44,7 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
       ? undefined
       : `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (loginHint?: string) => {
     try {
       setLoading("google");
       const { error } = await supabase.auth.signInWithOAuth({
@@ -41,7 +53,8 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
           redirectTo: callbackUrl,
           queryParams: {
             access_type: "offline",
-            prompt: "consent",
+            prompt: "select_account",
+            ...(loginHint ? { login_hint: loginHint } : {}),
           },
         },
       });
@@ -96,6 +109,12 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
     }
   };
 
+  const applyRememberedAccount = (account: RememberedAccount) => {
+    setMode("signin");
+    setEmail(account.email);
+    toast.success(`Continuing with ${account.email}.`);
+  };
+
   return (
     <Card className="section-panel overflow-hidden">
       <CardHeader className="space-y-3">
@@ -111,11 +130,70 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {rememberedAccounts.length > 0 ? (
+          <div className="space-y-3 rounded-2xl border border-border bg-muted/35 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Clock3 className="size-4 text-primary" />
+              Remembered accounts
+            </div>
+            <div className="space-y-2">
+              {rememberedAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-background/80 p-3"
+                >
+                  {account.avatarUrl ? (
+                    <span
+                      aria-label={`${account.name} avatar`}
+                      className="size-10 rounded-full bg-cover bg-center"
+                      style={{ backgroundImage: `url("${account.avatarUrl}")` }}
+                    />
+                  ) : (
+                    <div className="flex size-10 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+                      {account.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{account.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{account.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {account.providers.includes("google") ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={() => void handleGoogleLogin(account.email)}
+                        disabled={loading !== null}
+                      >
+                        Google
+                      </Button>
+                    ) : null}
+                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => applyRememberedAccount(account)}>
+                      Use
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="rounded-xl"
+                      onClick={() => removeRememberedAccount(account.id)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <Button
           type="button"
           variant="outline"
           className="w-full rounded-xl"
-          onClick={handleGoogleLogin}
+          onClick={() => void handleGoogleLogin()}
           disabled={loading !== null}
         >
           {loading === "google" ? <Loader2 className="size-4 animate-spin" /> : <span className="text-base font-semibold">G</span>}

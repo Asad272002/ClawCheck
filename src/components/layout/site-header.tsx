@@ -2,30 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ChevronDown,
-  CircleUserRound,
-  LogOut,
-  Menu,
-  Settings,
-  Sparkles,
-  User,
-} from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { Menu, Sparkles } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AccountMenu } from "@/components/auth/account-menu";
 import type { AppUser } from "@/lib/auth/user";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -42,7 +26,6 @@ type SiteHeaderProps = {
 };
 
 export function SiteHeader({ currentUser }: SiteHeaderProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
 
@@ -125,43 +108,10 @@ export function SiteHeader({ currentUser }: SiteHeaderProps) {
                   <Sparkles className="size-4" />
                   Open Dashboard
                 </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="hidden items-center gap-2 rounded-full border border-border bg-card px-2 py-1.5 text-sm shadow-sm transition hover:bg-accent sm:flex">
-                    <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
-                      <CircleUserRound className="size-4" />
-                    </span>
-                    <span className="hidden text-left md:block">
-                      <span className="block text-sm font-medium">{currentUser.name}</span>
-                      <span className="block text-xs text-muted-foreground">{currentUser.email}</span>
-                    </span>
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                      <Link href="/profile" className="flex w-full items-center gap-2">
-                        <User className="size-4" />
-                        View Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="size-4" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        const supabase = createSupabaseBrowserClient();
-                        await supabase.auth.signOut();
-                        router.push("/login");
-                        router.refresh();
-                      }}
-                    >
-                      <LogOut className="size-4" />
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <AccountMenu
+                  currentUser={currentUser}
+                  triggerClassName="hidden items-center gap-2 rounded-full border border-border bg-card px-2 py-1.5 text-sm shadow-sm transition hover:bg-accent sm:flex"
+                />
               </>
             ) : (
               <Link

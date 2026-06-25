@@ -10,6 +10,7 @@ export type AppUser = {
   email: string;
   name: string;
   avatarUrl: string | null;
+  providers: string[];
 };
 
 type ProfileRow = {
@@ -130,12 +131,20 @@ async function buildCurrentUser(redirectOnMissing: boolean) {
   }
 
   const typedProfile = profile as ProfileRow;
+  const providers = Array.isArray(user.app_metadata?.providers)
+    ? user.app_metadata.providers.filter((provider): provider is string => typeof provider === "string")
+    : Array.isArray(user.identities)
+      ? user.identities
+          .map((identity) => identity.provider)
+          .filter((provider): provider is string => typeof provider === "string")
+      : [];
 
   return {
     id: user.id,
     email: typedProfile.email ?? user.email ?? "",
     name: deriveDisplayName(user.email, typedProfile.full_name),
     avatarUrl: typedProfile.avatar_url,
+    providers,
   } satisfies AppUser;
 }
 

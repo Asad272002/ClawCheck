@@ -482,7 +482,10 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
               <p className="text-xs text-destructive">{form.formState.errors.category?.message}</p>
               <div className="space-y-3">
                 <Label>Select a prompt</Label>
-                <Select value={resolvedSelectedTestCaseId || undefined} onValueChange={setSelectedTestCaseId}>
+                <Select
+                  value={resolvedSelectedTestCaseId || undefined}
+                  onValueChange={(value) => setSelectedTestCaseId(value ?? "")}
+                >
                   <SelectTrigger className="h-12 w-full rounded-xl border-border bg-background/80 px-4">
                     <SelectValue placeholder="Choose a prompt from this category" />
                   </SelectTrigger>

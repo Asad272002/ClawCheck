@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Sign in to your ClawCheck workspace
           </h1>
           <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-            Access only the projects you own or the workspaces shared with you. New users can create their own review workspaces right after signing in.
+            Access only the projects you own or the workspaces shared with you. Returning users can pick from remembered accounts, and new users can create their own review workspaces right after signing in.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="surface-card p-5">
