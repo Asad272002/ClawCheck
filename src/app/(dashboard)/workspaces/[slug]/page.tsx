@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { ArrowLeft, ArrowRight, ShieldCheck, Sparkles, Target, TriangleAlert } from "lucide-react";
 
 import { FutureWorkspaceAction } from "@/components/workspaces/future-workspace-action";
+import {
+  WorkspaceMembersPanel,
+  type WorkspaceMembersPanelState,
+} from "@/components/workspaces/workspace-members-panel";
 import { WorkspaceEvaluationTable } from "@/components/workspaces/workspace-evaluation-table";
 import { WorkspaceTrendChart } from "@/components/workspaces/workspace-trend-chart";
 import { WorkspaceVersionList } from "@/components/workspaces/workspace-version-list";
@@ -10,12 +15,20 @@ import { WorkspaceWeaknessInsights } from "@/components/workspaces/workspace-wea
 import { PageHeading } from "@/components/shared/page-heading";
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
+import { requireCurrentUser } from "@/lib/auth/user";
+import {
+  addWorkspaceMembersByUserIds,
+  fetchWorkspaceMembers,
+  parseWorkspaceMemberEmails,
+  resolveRegisteredProfilesByEmails,
+} from "@/lib/db/workspace-members";
 import {
   fetchWorkspaces,
   findWorkspaceBySlug,
   getWorkspaceSummary,
   getWorkspaceTrendData,
 } from "@/lib/db/workspaces";
+import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 
 type WorkspaceDetailPageProps = {
   params: Promise<{
@@ -34,7 +47,82 @@ function HealthPill({ health }: { health: "Improving" | "Needs attention" | "Sta
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${classes}`}>{health}</span>;
 }
 
+async function addWorkspaceMembersAction(
+  _: WorkspaceMembersPanelState,
+  formData: FormData
+): Promise<WorkspaceMembersPanelState> {
+  "use server";
+
+  try {
+    const currentUser = await requireCurrentUser();
+    const supabase = await createSupabaseServerClient();
+    const workspaceSlug = formData.get("workspaceSlug")?.toString().trim() ?? "";
+    const memberEmails = parseWorkspaceMemberEmails(formData.get("memberEmails")?.toString() ?? "");
+
+    if (!workspaceSlug) {
+      return {
+        error: "Missing workspace reference.",
+        success: null,
+      };
+    }
+
+    if (memberEmails.length === 0) {
+      return {
+        error: "Enter at least one registered email to add a member.",
+        success: null,
+      };
+    }
+
+    const { data: ownedWorkspace, error: ownedWorkspaceError } = await supabase
+      .from("workspaces")
+      .select("id, name, slug, owner_user_id")
+      .eq("slug", workspaceSlug)
+      .eq("owner_user_id", currentUser.id)
+      .single();
+
+    if (ownedWorkspaceError || !ownedWorkspace) {
+      return {
+        error: "Only workspace owners can add members.",
+        success: null,
+      };
+    }
+
+    const { profiles, missingEmails } = await resolveRegisteredProfilesByEmails(memberEmails);
+
+    if (missingEmails.length > 0) {
+      return {
+        error: `These emails are not registered on ClawCheck yet: ${missingEmails.join(", ")}`,
+        success: null,
+      };
+    }
+
+    const result = await addWorkspaceMembersByUserIds({
+      workspaceId: ownedWorkspace.id,
+      userIds: profiles.map((profile) => profile.id),
+      addedByUserId: currentUser.id,
+    });
+
+    revalidatePath(`/workspaces/${workspaceSlug}`);
+    revalidatePath("/workspaces");
+    revalidatePath("/dashboard");
+
+    return {
+      error: null,
+      success:
+        result.addedCount > 0
+          ? `Added ${result.addedCount} member${result.addedCount === 1 ? "" : "s"} to ${ownedWorkspace.name}.`
+          : "Those registered users are already members of this workspace.",
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unable to update workspace members.",
+      success: null,
+    };
+  }
+}
+
 export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPageProps) {
+  const currentUser = await requireCurrentUser();
   const { slug } = await params;
   const workspaces = await fetchWorkspaces();
   const workspace = findWorkspaceBySlug(workspaces, slug);
@@ -45,9 +133,11 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
 
   const summary = getWorkspaceSummary(workspace);
   const trendData = getWorkspaceTrendData(workspace);
+  const workspaceMembers = await fetchWorkspaceMembers(workspace.id);
   const latestEvaluation = [...workspace.evaluations].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
   )[0];
+  const canManageMembers = workspace.ownerUserId === currentUser.id;
 
   return (
     <div className="space-y-8">
@@ -212,6 +302,13 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
         <WorkspaceTrendChart data={trendData} />
         <WorkspaceVersionList versions={workspace.versions} />
       </div>
+
+      <WorkspaceMembersPanel
+        members={workspaceMembers}
+        canManage={canManageMembers}
+        workspaceSlug={workspace.slug}
+        action={addWorkspaceMembersAction}
+      />
 
       <WorkspaceEvaluationTable evaluations={workspace.evaluations} versions={workspace.versions} />
 

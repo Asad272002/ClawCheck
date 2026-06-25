@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock3, Loader2, Mail, ShieldCheck, Trash2 } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { ArrowRight, Clock3, Loader2, Mail, ShieldCheck, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
 import {
@@ -28,6 +28,7 @@ const EMPTY_REMEMBERED_ACCOUNTS: RememberedAccount[] = [];
 export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const [mode, setMode] = useState<AuthMode>("signin");
   const [fullName, setFullName] = useState("");
   const rememberedAccounts = useSyncExternalStore(
@@ -109,29 +110,37 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
     }
   };
 
-  const applyRememberedAccount = (account: RememberedAccount) => {
+  const applyRememberedAccount = async (account: RememberedAccount) => {
+    if (account.providers.includes("google")) {
+      await handleGoogleLogin(account.email);
+      return;
+    }
+
     setMode("signin");
     setEmail(account.email);
-    toast.success(`Continuing with ${account.email}.`);
+    window.requestAnimationFrame(() => {
+      passwordInputRef.current?.focus();
+    });
+    toast.success(`Email loaded for ${account.email}. Enter your password to continue.`);
   };
 
   return (
-    <Card className="section-panel overflow-hidden">
-      <CardHeader className="space-y-3">
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+    <Card className="section-panel overflow-hidden rounded-[1.75rem] border-border/70">
+      <CardHeader className="space-y-2 pb-4">
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
           <ShieldCheck className="size-3.5" />
           Secure Workspace Access
         </div>
-        <CardTitle className="text-2xl tracking-tight">
+        <CardTitle className="text-xl tracking-tight sm:text-2xl">
           {mode === "signin" ? "Sign in to your workspace" : "Create your workspace account"}
         </CardTitle>
         <CardDescription className="text-sm leading-6">
           Use Google SSO for the fastest setup, or continue with email and password for structured team access.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {rememberedAccounts.length > 0 ? (
-          <div className="space-y-3 rounded-2xl border border-border bg-muted/35 p-4">
+          <div className="space-y-3 rounded-2xl border border-border bg-muted/35 p-3.5">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Clock3 className="size-4 text-primary" />
               Remembered accounts
@@ -158,20 +167,16 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
                     <p className="truncate text-xs text-muted-foreground">{account.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {account.providers.includes("google") ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl"
-                        onClick={() => void handleGoogleLogin(account.email)}
-                        disabled={loading !== null}
-                      >
-                        Google
-                      </Button>
-                    ) : null}
-                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => applyRememberedAccount(account)}>
-                      Use
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={() => void applyRememberedAccount(account)}
+                      disabled={loading !== null}
+                    >
+                      {account.providers.includes("google") ? "Continue" : "Use email"}
+                      <ArrowRight className="size-3.5" />
                     </Button>
                     <Button
                       type="button"
@@ -236,6 +241,7 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
+              ref={passwordInputRef}
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -266,7 +272,7 @@ export function AuthPanel({ nextPath = "/dashboard" }: AuthPanelProps) {
           </button>
         </div>
 
-        <p className="text-xs leading-6 text-muted-foreground">
+        <p className="text-xs leading-5 text-muted-foreground">
           By continuing, your workspace access is linked to your profile so you only see projects you own or that have been shared with you.
         </p>
         <Link href="/" className="inline-flex text-sm font-medium text-primary">

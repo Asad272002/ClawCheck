@@ -108,6 +108,24 @@ export type WorkspaceRecommendation = {
   targetVersion: string;
 };
 
+export type WorkspaceMemberRole = "owner" | "member";
+
+export type WorkspaceMember = {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  role: WorkspaceMemberRole;
+  joinedAt: string;
+};
+
+export type WorkspaceMemberCandidate = {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+};
+
 export type AgentWorkspace = {
   id: string;
   slug: string;
@@ -116,6 +134,7 @@ export type AgentWorkspace = {
   purpose: string;
   description: string;
   owner: string;
+  ownerUserId: string | null;
   team: string;
   health: WorkspaceHealth;
   primaryGoal: string;

@@ -29,6 +29,7 @@ type WorkspaceRow = {
   purpose: string;
   description: string;
   owner_name: string;
+  owner_user_id: string | null;
   team: string;
   health: WorkspaceHealth;
   primary_goal: string;
@@ -133,7 +134,7 @@ export async function fetchWorkspaces() {
   const [workspaceResult, versionsResult, evaluationsResult, weaknessesResult, recommendationsResult] = await Promise.all([
     supabase
       .from("workspaces")
-      .select("id, slug, name, agent_name, purpose, description, owner_name, team, health, primary_goal, last_updated, tags")
+      .select("id, slug, name, agent_name, purpose, description, owner_name, owner_user_id, team, health, primary_goal, last_updated, tags")
       .order("last_updated", { ascending: false }),
     supabase
       .from("workspace_versions")
@@ -204,6 +205,7 @@ export async function fetchWorkspaces() {
     purpose: row.purpose,
     description: row.description,
     owner: row.owner_name,
+    ownerUserId: row.owner_user_id,
     team: row.team,
     health: row.health,
     primaryGoal: row.primary_goal,
