@@ -19,6 +19,10 @@ type ProfileRow = {
   avatar_url: string | null;
 };
 
+type WorkspaceIdRow = {
+  id: string;
+};
+
 function deriveDisplayName(email: string | undefined, fullName: string | null | undefined) {
   if (fullName && fullName.trim().length > 0) {
     return fullName;
@@ -32,7 +36,9 @@ function deriveDisplayName(email: string | undefined, fullName: string | null | 
 }
 
 async function syncProfileAndClaimLegacyAccess(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
-  const admin = getSupabaseAdmin();
+  // Supabase admin queries are intentionally cast until Database types are generated for the project.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = getSupabaseAdmin() as any;
   const fullName =
     typeof user.user_metadata?.full_name === "string"
       ? user.user_metadata.full_name
@@ -75,9 +81,11 @@ async function syncProfileAndClaimLegacyAccess(user: { id: string; email?: strin
     throw new Error(`Unable to load owned workspaces: ${ownedError.message}`);
   }
 
-  if ((ownedWorkspaces ?? []).length > 0) {
+  const typedOwnedWorkspaces = (ownedWorkspaces ?? []) as WorkspaceIdRow[];
+
+  if (typedOwnedWorkspaces.length > 0) {
     const { error: membershipError } = await admin.from("workspace_memberships").upsert(
-      ownedWorkspaces!.map((workspace) => ({
+      typedOwnedWorkspaces.map((workspace) => ({
         workspace_id: workspace.id,
         user_id: user.id,
         role: "owner",
@@ -108,7 +116,9 @@ async function buildCurrentUser(redirectOnMissing: boolean) {
 
   await syncProfileAndClaimLegacyAccess(user);
 
-  const admin = getSupabaseAdmin();
+  // Supabase admin queries are intentionally cast until Database types are generated for the project.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = getSupabaseAdmin() as any;
   const { data: profile, error } = await admin
     .from("profiles")
     .select("id, email, full_name, avatar_url")

@@ -37,6 +37,7 @@ export type EvaluationInput = {
   agentName: string;
   agentPurpose: string;
   agentType: string;
+  workspaceId?: string;
   category: EvaluationCategory;
   testPrompt: string;
   agentResponse: string;

@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     await persistReport(report, {
       source: "generated",
       testCaseId,
+      workspaceId: payload.workspaceId,
       createdBy: currentUser.id,
     });
 

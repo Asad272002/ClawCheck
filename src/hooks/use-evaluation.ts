@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -23,7 +23,8 @@ export function useEvaluation() {
       });
 
       if (!response.ok) {
-        throw new Error("Evaluation failed.");
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message || "Evaluation failed.");
       }
 
       const report = (await response.json()) as EvaluationReport;

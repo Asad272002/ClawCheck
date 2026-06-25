@@ -1,4 +1,4 @@
-﻿# dependencies
+# dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -31,6 +31,15 @@ pnpm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
+
+# local auth / database tooling
+.mcp.json
+.supabase/
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/.env.*
 
 # vercel
 .vercel

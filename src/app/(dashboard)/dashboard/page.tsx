@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireCurrentUser } from "@/lib/auth/user";
+import { getReports } from "@/lib/db/reports";
 import { fetchWorkspaces, getAccessibleWorkspaceDashboard } from "@/lib/db/workspaces";
 import { formatRelativeTime } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const currentUser = await requireCurrentUser();
-  const workspaces = await fetchWorkspaces();
+  const [workspaces, reports] = await Promise.all([fetchWorkspaces(), getReports()]);
   const dashboard = getAccessibleWorkspaceDashboard(workspaces);
   const firstName = currentUser.name.split(" ")[0] || currentUser.name;
   const averageScore = dashboard.stats.averageLatestScore;
@@ -36,6 +37,151 @@ export default async function DashboardPage() {
     stable: dashboard.workspaces.filter((workspace) => workspace.health === "Stable").length,
     attention: dashboard.workspaces.filter((workspace) => workspace.health === "Needs attention").length,
   };
+  const reportAverageScore =
+    reports.length > 0 ? Math.round(reports.reduce((total, report) => total + report.finalScore, 0) / reports.length) : 0;
+  const recentReports = reports.slice(0, 5);
+
+  if (dashboard.workspaces.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 rounded-[2rem] border border-border/80 bg-card/95 px-6 py-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-primary">Overview</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              {`${firstName}'s evaluation workspace`}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {reports.length > 0
+                ? `You have ${reports.length} generated report${reports.length === 1 ? "" : "s"} already. Create a workspace when you're ready to group them into tracked projects.`
+                : "Start with a guided evaluation or create a workspace to begin tracking agents across versions."}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/workspaces/new">
+              <Button variant="outline" className="rounded-xl">
+                Create Workspace
+              </Button>
+            </Link>
+            <Link href="/reports">
+              <Button variant="outline" className="rounded-xl">
+                View Reports
+              </Button>
+            </Link>
+            <Link href="/evaluations/new">
+              <Button className="rounded-xl shadow-[0_12px_28px_rgba(37,99,235,0.22)]">
+                <Sparkles className="size-4" />
+                New Evaluation
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {reports.length > 0 ? (
+          <>
+            <div className="grid gap-4 lg:grid-cols-4">
+              <Card className="section-panel">
+                <CardContent className="space-y-2 p-6">
+                  <p className="text-sm font-medium text-muted-foreground">Generated reports</p>
+                  <p className="text-3xl font-semibold tracking-tight text-foreground">{reports.length}</p>
+                  <p className="text-sm text-muted-foreground">Saved to your personal report library.</p>
+                </CardContent>
+              </Card>
+              <Card className="section-panel">
+                <CardContent className="space-y-2 p-6">
+                  <p className="text-sm font-medium text-muted-foreground">Average score</p>
+                  <p className="text-3xl font-semibold tracking-tight text-foreground">{reportAverageScore}</p>
+                  <p className="text-sm text-muted-foreground">Across your recent generated evaluations.</p>
+                </CardContent>
+              </Card>
+              <Card className="section-panel">
+                <CardContent className="space-y-2 p-6">
+                  <p className="text-sm font-medium text-muted-foreground">High-risk reports</p>
+                  <p className="text-3xl font-semibold tracking-tight text-foreground">
+                    {reports.filter((report) => report.riskLevel === "High").length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Runs that likely need another review pass.</p>
+                </CardContent>
+              </Card>
+              <Card className="section-panel">
+                <CardContent className="space-y-2 p-6">
+                  <p className="text-sm font-medium text-muted-foreground">Latest category</p>
+                  <p className="text-lg font-semibold tracking-tight text-foreground">{recentReports[0]?.category}</p>
+                  <p className="text-sm text-muted-foreground">Your newest report is ready to inspect.</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="section-panel overflow-hidden">
+              <CardContent className="space-y-5 p-0">
+                <div className="flex flex-col gap-3 border-b border-border/80 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold">Recent reports</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your evaluations are saving correctly. Add a workspace when you want version tracking and project analytics.
+                    </p>
+                  </div>
+                  <Link href="/reports" className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                    Open full report library
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </div>
+                <div className="overflow-x-auto px-3 pb-3 sm:px-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border">
+                        <TableHead>Agent</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>Risk</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Updated</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentReports.map((report) => (
+                        <TableRow key={report.id} className="border-border">
+                          <TableCell>
+                            <Link href={`/evaluations/${report.id}`} className="font-medium hover:text-primary">
+                              {report.agentName}
+                            </Link>
+                          </TableCell>
+                          <TableCell>{report.category}</TableCell>
+                          <TableCell>
+                            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                              {report.finalScore}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <RiskBadge riskLevel={report.riskLevel} />
+                          </TableCell>
+                          <TableCell>
+                            <RiskBadge status={report.status} />
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatRelativeTime(report.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <Card className="section-panel">
+            <CardContent className="space-y-3 p-8 text-center">
+              <p className="text-lg font-semibold text-foreground">Nothing has been tracked yet</p>
+              <p className="mx-auto max-w-2xl text-sm text-muted-foreground">
+                Run an evaluation to generate your first report, then create a workspace to organize future iterations and compare progress over time.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   const overviewCards = [
     {
       title: "My average safety score",
@@ -88,7 +234,7 @@ export default async function DashboardPage() {
         <div className="space-y-1">
           <p className="text-sm font-medium text-primary">Overview</p>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {firstName}'s AI safety workspace
+            {`${firstName}'s AI safety workspace`}
           </h1>
           <p className="text-sm text-muted-foreground">
             Track {dashboard.stats.workspaceCount} active workspaces, {dashboard.stats.totalEvaluations} evaluation runs, and the repeated issues that still need attention.

@@ -23,10 +23,13 @@ function mapTestCase(row: TestCaseRow): TestCase {
 }
 
 export function groupTestCasesByCategory(testCases: TestCase[]) {
-  const grouped = Object.fromEntries(TEST_CATEGORIES.map((category) => [category, []])) as Record<
-    EvaluationCategory,
-    TestCase[]
-  >;
+  const grouped = TEST_CATEGORIES.reduce(
+    (accumulator, category) => {
+      accumulator[category] = [];
+      return accumulator;
+    },
+    {} as Record<EvaluationCategory, TestCase[]>
+  );
 
   for (const testCase of testCases) {
     grouped[testCase.category].push(testCase);
