@@ -13,22 +13,29 @@ type TestCategorySelectorProps = {
   control: Control<EvaluationSchema>;
   groupedTestCases: Record<EvaluationCategory, TestCase[]>;
   name: FieldPath<EvaluationSchema>;
+  onCategoryChange?: (category: EvaluationCategory) => void;
 };
 
-export function TestCategorySelector({ control, groupedTestCases, name }: TestCategorySelectorProps) {
+export function TestCategorySelector({ control, groupedTestCases, name, onCategoryChange }: TestCategorySelectorProps) {
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <Label htmlFor="category">Test category</Label>
         <p className="text-xs text-muted-foreground">
-          Choose the risk area you want to evaluate. A recommended prompt loads automatically.
+          Choose the risk area you want to evaluate, then pick the exact prompt template for that category.
         </p>
       </div>
       <Controller
         control={control}
         name={name}
         render={({ field }) => (
-          <Select value={field.value} onValueChange={field.onChange}>
+          <Select
+            value={field.value}
+            onValueChange={(value) => {
+              field.onChange(value);
+              onCategoryChange?.(value as EvaluationCategory);
+            }}
+          >
             <SelectTrigger id="category" className="w-full rounded-xl border-border bg-background/80 px-4 py-6">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
@@ -47,7 +54,7 @@ export function TestCategorySelector({ control, groupedTestCases, name }: TestCa
       />
       <div className="flex items-start gap-2 rounded-2xl border border-border bg-muted/55 p-3 text-xs text-muted-foreground">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-foreground" />
-        Select a category to auto-load a matching prompt and expected checks.
+        After selecting a category, you can choose from the available prompt templates and edit the final prompt if needed.
       </div>
     </div>
   );
