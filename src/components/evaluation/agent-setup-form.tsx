@@ -75,19 +75,41 @@ type StepCardProps = {
   description: string;
   active: boolean;
   completed: boolean;
+  locked?: boolean;
+  lockedMessage?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 };
 
-function StepCard({ step, title, description, active, completed, children, footer }: StepCardProps) {
+function StepCard({
+  step,
+  title,
+  description,
+  active,
+  completed,
+  locked = false,
+  lockedMessage,
+  children,
+  footer,
+}: StepCardProps) {
   return (
-    <Card className={`overflow-hidden border transition-all ${active ? "border-primary/30 shadow-[0_20px_50px_rgba(37,99,235,0.12)]" : "border-border/80"}`}>
+    <Card
+      className={`overflow-hidden border transition-all ${
+        locked
+          ? "border-dashed border-border/80 bg-muted/25"
+          : active
+            ? "border-primary/30 shadow-[0_20px_50px_rgba(37,99,235,0.12)]"
+            : "border-border/80"
+      }`}
+    >
       <CardContent className="space-y-5 p-6">
         <div className="flex items-start gap-4">
           <div
             className={`flex size-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${
               completed
                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : locked
+                  ? "bg-muted text-muted-foreground"
                 : active
                   ? "bg-primary/12 text-primary"
                   : "bg-muted text-muted-foreground"
@@ -100,8 +122,16 @@ function StepCard({ step, title, description, active, completed, children, foote
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
-        {children}
-        {footer ? <div className="flex flex-wrap items-center justify-end gap-3">{footer}</div> : null}
+        {locked ? (
+          <div className="rounded-3xl border border-dashed border-border bg-background/70 p-4 text-sm text-muted-foreground">
+            {lockedMessage ?? "Complete the previous step to unlock this section."}
+          </div>
+        ) : (
+          <>
+            {children}
+            {footer ? <div className="flex flex-wrap items-center justify-end gap-3">{footer}</div> : null}
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -247,6 +277,7 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
     two: Boolean(selectedCategory) && testPrompt.trim().length >= 20,
     three: agentResponse.trim().length >= 40,
   };
+  const unlockedStep = completedSteps.one ? (completedSteps.two ? (completedSteps.three ? 4 : 3) : 2) : 1;
   const selectedWorkspace = workspaces.find((workspace) => workspace.id === selectedWorkspaceId);
 
   const continueToStep = async (fields: Array<keyof EvaluationSchema>, nextStep: number) => {
@@ -305,13 +336,20 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
                 <button
                   key={item.step}
                   type="button"
-                  onClick={() => setCurrentStep(item.step)}
+                  onClick={() => {
+                    if (item.step <= unlockedStep) {
+                      setCurrentStep(item.step);
+                    }
+                  }}
+                  disabled={item.step > unlockedStep}
                   className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
                     currentStep === item.step
                       ? "border-primary/30 bg-primary/10 text-primary"
                       : item.step < currentStep
                         ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "border-border bg-background/70 text-muted-foreground"
+                        : item.step > unlockedStep
+                          ? "cursor-not-allowed border-dashed border-border/70 bg-muted/40 text-muted-foreground/80"
+                          : "border-border bg-background/70 text-muted-foreground"
                   }`}
                 >
                   <p className="font-semibold">{`Step ${item.step}`}</p>
@@ -392,6 +430,8 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
             description="Pick the risk area and confirm the exact prompt being evaluated."
             active={currentStep === 2}
             completed={Boolean(completedSteps.two)}
+            locked={!completedSteps.one}
+            lockedMessage="Finish and validate Step 1 before choosing the category and prompt."
             footer={
               <>
                 <Button type="button" variant="outline" className="rounded-xl" onClick={() => setCurrentStep(1)}>
@@ -419,6 +459,8 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
             description="Paste the target answer so ClawCheck can score it against the selected rubric."
             active={currentStep === 3}
             completed={completedSteps.three}
+            locked={!completedSteps.one || !completedSteps.two}
+            lockedMessage="Complete and validate Steps 1 and 2 before pasting the response under review."
             footer={
               <>
                 <Button type="button" variant="outline" className="rounded-xl" onClick={() => setCurrentStep(2)}>
@@ -444,6 +486,8 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
             description="Double-check the evaluation context, then let ClawCheck generate and open the final report automatically."
             active={currentStep === 4}
             completed={false}
+            locked={!completedSteps.one || !completedSteps.two || !completedSteps.three}
+            lockedMessage="Complete all previous steps before unlocking the final review and report generation."
             footer={
               <>
                 <Button type="button" variant="outline" className="rounded-xl" onClick={() => setCurrentStep(3)}>
