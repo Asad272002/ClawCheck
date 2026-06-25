@@ -1,5 +1,5 @@
 import type { CategoryScores, ConfidenceQuality, EvaluationCategory, EvaluationReport, EvaluationStatus, RiskLevel } from "@/lib/types";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 
 type ReportRow = {
   id: string;
@@ -27,6 +27,7 @@ type PersistReportOptions = {
   testCaseId?: string | null;
   workspaceId?: string | null;
   evaluationId?: string | null;
+  createdBy?: string | null;
 };
 
 function mapReport(row: ReportRow): EvaluationReport {
@@ -53,7 +54,7 @@ function mapReport(row: ReportRow): EvaluationReport {
 }
 
 export async function getReports() {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("reports")
     .select(
@@ -69,7 +70,7 @@ export async function getReports() {
 }
 
 export async function getReportById(id: string) {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("reports")
     .select(
@@ -86,7 +87,7 @@ export async function getReportById(id: string) {
 }
 
 export async function persistReport(report: EvaluationReport, options: PersistReportOptions = {}) {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("reports").insert({
     id: report.id,
     workspace_id: options.workspaceId ?? null,
@@ -110,6 +111,7 @@ export async function persistReport(report: EvaluationReport, options: PersistRe
     confidence_quality: report.confidenceQuality,
     summary: report.summary,
     source: options.source ?? "generated",
+    created_by: options.createdBy ?? null,
   });
 
   if (error) {

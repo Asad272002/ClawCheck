@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, FolderKanban, GitBranch, ShieldCheck, Sparkles, TriangleAlert } from "lucide-react";
 
-import { FutureWorkspaceAction } from "@/components/workspaces/future-workspace-action";
 import { WorkspaceCard } from "@/components/workspaces/workspace-card";
 import { PageHeading } from "@/components/shared/page-heading";
 import { Button } from "@/components/ui/button";
@@ -26,11 +25,11 @@ export default async function WorkspacesPage() {
         description="Group evaluation history by agent or project, compare version progress, spot repeated weaknesses, and plan the next improvement cycle without breaking the current review flow."
         action={
           <>
-            <FutureWorkspaceAction
-              label="Create workspace"
-              description="Workspace creation will connect to saved projects, owners, and shared history later."
-              className="rounded-xl"
-            />
+            <Link href="/workspaces/new">
+              <Button variant="outline" className="rounded-xl">
+                Create workspace
+              </Button>
+            </Link>
             <Link href="/evaluations/new">
               <Button className="rounded-xl">
                 <Sparkles className="size-4" />

@@ -1,9 +1,12 @@
-﻿import { SiteHeader } from "@/components/layout/site-header";
+import { SiteHeader } from "@/components/layout/site-header";
+import { getOptionalCurrentUser } from "@/lib/auth/user";
 
-export default function MarketingLayout({ children }: { children: React.ReactNode }) {
+export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
+  const currentUser = await getOptionalCurrentUser();
+
   return (
     <div className="min-h-screen">
-      <SiteHeader />
+      <SiteHeader currentUser={currentUser} />
       <main>{children}</main>
     </div>
   );

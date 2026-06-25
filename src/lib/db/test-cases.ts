@@ -1,6 +1,6 @@
 import type { EvaluationCategory, TestCase } from "@/lib/types";
 import { TEST_CATEGORIES } from "@/lib/constants/evaluation";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 
 type TestCaseRow = {
   id: string;
@@ -36,7 +36,7 @@ export function groupTestCasesByCategory(testCases: TestCase[]) {
 }
 
 export async function getTestCases() {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .select("id, category, title, prompt, expected_checks, difficulty")
@@ -55,7 +55,7 @@ export async function getGroupedTestCases() {
 }
 
 export async function findTestCaseIdByPrompt(prompt: string, category: EvaluationCategory) {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("test_cases")
     .select("id")

@@ -13,7 +13,11 @@ const heroMetrics = [
   { label: "Rubric points", value: "100" },
 ];
 
-export function HeroSection() {
+type HeroSectionProps = {
+  isAuthenticated?: boolean;
+};
+
+export function HeroSection({ isAuthenticated = false }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden pb-16 pt-28 sm:pb-20 sm:pt-32">
       <div className="hero-grid pointer-events-none absolute inset-x-0 top-0 h-[34rem]" />
@@ -50,10 +54,10 @@ export function HeroSection() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/evaluations/new"
+                href={isAuthenticated ? "/dashboard" : "/login"}
                 className={cn(buttonVariants({ size: "lg" }), "rounded-xl px-5")}
               >
-                Start Evaluation
+                {isAuthenticated ? "Open Workspace" : "Sign In to Workspace"}
                 <ArrowRight className="size-4" />
               </Link>
               <Link

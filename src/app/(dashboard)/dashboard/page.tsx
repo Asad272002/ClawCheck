@@ -6,16 +6,15 @@ import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchWorkspaces, getOwnerWorkspaceDashboard } from "@/lib/db/workspaces";
+import { requireCurrentUser } from "@/lib/auth/user";
+import { fetchWorkspaces, getAccessibleWorkspaceDashboard } from "@/lib/db/workspaces";
 import { formatRelativeTime } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const currentUser = {
-    name: "Asad Khan",
-    firstName: "Asad",
-  };
+  const currentUser = await requireCurrentUser();
   const workspaces = await fetchWorkspaces();
-  const dashboard = getOwnerWorkspaceDashboard(currentUser.name, workspaces);
+  const dashboard = getAccessibleWorkspaceDashboard(workspaces);
+  const firstName = currentUser.name.split(" ")[0] || currentUser.name;
   const averageScore = dashboard.stats.averageLatestScore;
   const scoreBands = {
     excellent: dashboard.evaluations.filter((evaluation) => evaluation.score >= 80).length,
@@ -40,7 +39,7 @@ export default async function DashboardPage() {
   const overviewCards = [
     {
       title: "My average safety score",
-      description: "Across the latest versions in Asad's tracked workspaces.",
+      description: `Across the latest versions in ${firstName}'s accessible workspaces.`,
       value: `${averageScore}`,
       helper: "out of 100",
       data: [
@@ -50,7 +49,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Evaluation distribution",
-      description: "How Asad's recent runs are scoring.",
+      description: `How ${firstName}'s accessible runs are scoring.`,
       value: `${dashboard.stats.totalEvaluations}`,
       helper: "runs",
       data: [
@@ -61,7 +60,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Risk mix",
-      description: "Risk level across Asad's workspace reviews.",
+      description: `Risk level across ${firstName}'s accessible workspace reviews.`,
       value: `${riskMix.high}`,
       helper: "high risk",
       data: [
@@ -72,7 +71,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Workspace health",
-      description: "Health state across Asad's active projects.",
+      description: `Health state across ${firstName}'s active and shared projects.`,
       value: `${dashboard.stats.workspaceCount}`,
       helper: "workspaces",
       data: [
@@ -89,7 +88,7 @@ export default async function DashboardPage() {
         <div className="space-y-1">
           <p className="text-sm font-medium text-primary">Overview</p>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {currentUser.firstName}'s AI safety workspace
+            {firstName}'s AI safety workspace
           </h1>
           <p className="text-sm text-muted-foreground">
             Track {dashboard.stats.workspaceCount} active workspaces, {dashboard.stats.totalEvaluations} evaluation runs, and the repeated issues that still need attention.
@@ -121,7 +120,7 @@ export default async function DashboardPage() {
             <div className="space-y-1">
               <p className="text-lg font-semibold text-foreground">My current focus</p>
               <p className="text-sm text-muted-foreground">
-                The overview below is scoped to workspaces owned by {currentUser.firstName}, so the dashboard reflects his active projects instead of every mock dataset in ClawCheck.
+                {`The overview below is scoped to workspaces ${firstName} owns or has access to, so shared projects can appear alongside personal ones.`}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -130,7 +129,7 @@ export default async function DashboardPage() {
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                   {dashboard.stats.trackedVersions}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">Across Asad's current workspaces</p>
+                <p className="mt-1 text-xs text-muted-foreground">{`Across ${firstName}'s current workspaces`}</p>
               </div>
               <div className="subtle-panel px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Persistent issues</p>
@@ -155,7 +154,7 @@ export default async function DashboardPage() {
             <div className="space-y-1">
               <p className="text-lg font-semibold text-foreground">Next best actions</p>
               <p className="text-sm text-muted-foreground">
-                Recommended iteration steps for Asad's current workspace backlog.
+                {`Recommended iteration steps for ${firstName}'s current workspace backlog.`}
               </p>
             </div>
             <div className="space-y-3">
@@ -196,7 +195,7 @@ export default async function DashboardPage() {
             <div className="space-y-1">
               <p className="text-lg font-semibold">Recent evaluations</p>
               <p className="text-sm text-muted-foreground">
-                A cleaner snapshot of evaluations run across Asad's workspaces.
+                {`A cleaner snapshot of evaluations run across ${firstName}'s workspaces.`}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

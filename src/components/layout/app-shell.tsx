@@ -3,6 +3,7 @@
 import { PanelLeft } from "lucide-react";
 import { useState } from "react";
 
+import type { AppUser } from "@/lib/auth/user";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Button } from "@/components/ui/button";
@@ -17,15 +18,17 @@ import {
 
 type AppShellProps = {
   children: React.ReactNode;
+  currentUser: AppUser;
 };
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, currentUser }: AppShellProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   return (
     <div className="min-h-screen pb-6">
       <Sheet>
         <DashboardHeader
+          currentUser={currentUser}
           sidebarExpanded={sidebarExpanded}
           mobileNavTrigger={
             <SheetTrigger render={<Button variant="outline" size="icon-sm" aria-label="Open navigation" />}>

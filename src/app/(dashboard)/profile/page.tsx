@@ -3,8 +3,16 @@ import { BarChart3, BellRing, ShieldCheck, Sparkles, SwatchBook, Workflow } from
 import { PageHeading } from "@/components/shared/page-heading";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireCurrentUser } from "@/lib/auth/user";
+import { getReports } from "@/lib/db/reports";
+import { fetchWorkspaces } from "@/lib/db/workspaces";
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const currentUser = await requireCurrentUser();
+  const [workspaces, reports] = await Promise.all([fetchWorkspaces(), getReports()]);
+  const averageScore =
+    reports.length > 0 ? Math.round(reports.reduce((total, report) => total + report.finalScore, 0) / reports.length) : 0;
+
   return (
     <div className="space-y-8">
       <PageHeading
@@ -22,11 +30,11 @@ export default function ProfilePage() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="flex size-16 items-center justify-center rounded-2xl bg-foreground text-xl font-semibold text-background shadow-sm">
-                A
+                {currentUser.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="text-lg font-semibold">Asad</p>
-                <p className="text-sm text-muted-foreground">Lead evaluator</p>
+                <p className="text-lg font-semibold">{currentUser.name}</p>
+                <p className="text-sm text-muted-foreground">{currentUser.email}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -53,16 +61,16 @@ export default function ProfilePage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="surface-card p-4">
-                <p className="text-2xl font-semibold tracking-tight">32</p>
+                <p className="text-2xl font-semibold tracking-tight">{reports.length}</p>
                 <p className="mt-1 text-sm text-muted-foreground">Reports reviewed</p>
               </div>
               <div className="surface-card p-4">
-                <p className="text-2xl font-semibold tracking-tight">82</p>
+                <p className="text-2xl font-semibold tracking-tight">{averageScore}</p>
                 <p className="mt-1 text-sm text-muted-foreground">Average score seen</p>
               </div>
               <div className="surface-card p-4">
-                <p className="text-2xl font-semibold tracking-tight">4</p>
-                <p className="mt-1 text-sm text-muted-foreground">Active categories</p>
+                <p className="text-2xl font-semibold tracking-tight">{workspaces.length}</p>
+                <p className="mt-1 text-sm text-muted-foreground">Accessible workspaces</p>
               </div>
             </div>
           </CardContent>

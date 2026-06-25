@@ -5,14 +5,17 @@ import Link from "next/link";
 import {
   ChevronDown,
   CircleUserRound,
+  LogOut,
   Menu,
   Settings,
   Sparkles,
   User,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import type { AppUser } from "@/lib/auth/user";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -34,7 +37,12 @@ import {
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  currentUser: AppUser | null;
+};
+
+export function SiteHeader({ currentUser }: SiteHeaderProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
 
@@ -108,39 +116,61 @@ export function SiteHeader() {
 
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
-            <Link
-              href="/evaluations/new"
-              className={cn(buttonVariants({ size: "sm" }), "hidden rounded-xl px-4 sm:inline-flex")}
-            >
-              <Sparkles className="size-4" />
-              Start Evaluation
-            </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="hidden items-center gap-2 rounded-full border border-border bg-card px-2 py-1.5 text-sm shadow-sm transition hover:bg-accent sm:flex">
-                <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
-                  <CircleUserRound className="size-4" />
-                </span>
-                <span className="hidden text-left md:block">
-                  <span className="block text-sm font-medium">Asad</span>
-                  <span className="block text-xs text-muted-foreground">Profile</span>
-                </span>
-                <ChevronDown className="size-4 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel>Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Link href="/profile" className="flex w-full items-center gap-2">
-                    <User className="size-4" />
-                    View Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="size-4" />
-                  Settings
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {currentUser ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className={cn(buttonVariants({ size: "sm" }), "hidden rounded-xl px-4 sm:inline-flex")}
+                >
+                  <Sparkles className="size-4" />
+                  Open Dashboard
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="hidden items-center gap-2 rounded-full border border-border bg-card px-2 py-1.5 text-sm shadow-sm transition hover:bg-accent sm:flex">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
+                      <CircleUserRound className="size-4" />
+                    </span>
+                    <span className="hidden text-left md:block">
+                      <span className="block text-sm font-medium">{currentUser.name}</span>
+                      <span className="block text-xs text-muted-foreground">{currentUser.email}</span>
+                    </span>
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Link href="/profile" className="flex w-full items-center gap-2">
+                        <User className="size-4" />
+                        View Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Settings className="size-4" />
+                      Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const supabase = createSupabaseBrowserClient();
+                        await supabase.auth.signOut();
+                        router.push("/login");
+                        router.refresh();
+                      }}
+                    >
+                      <LogOut className="size-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className={cn(buttonVariants({ size: "sm" }), "hidden rounded-xl px-4 sm:inline-flex")}
+              >
+                Sign In
+              </Link>
+            )}
             <SheetTrigger
               render={<button aria-label="Open menu" className="flex size-10 items-center justify-center rounded-xl border border-border bg-card shadow-sm lg:hidden" />}
             >
@@ -170,11 +200,11 @@ export function SiteHeader() {
             </Link>
           ))}
           <Link
-            href="/evaluations/new"
+            href={currentUser ? "/dashboard" : "/login"}
             className={cn(buttonVariants({ size: "lg" }), "mt-4 w-full rounded-xl")}
           >
             <Sparkles className="size-4" />
-            Start Evaluation
+            {currentUser ? "Open Dashboard" : "Sign In"}
           </Link>
         </div>
       </SheetContent>

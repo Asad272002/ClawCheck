@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, CircleUserRound, PanelLeft, Settings, User } from "lucide-react";
+import { ChevronDown, CircleUserRound, LogOut, PanelLeft, Settings, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import type { AppUser } from "@/lib/auth/user";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import {
   DropdownMenu,
@@ -17,14 +20,17 @@ import {
 import { Button } from "@/components/ui/button";
 
 type DashboardHeaderProps = {
+  currentUser: AppUser;
   mobileNavTrigger?: React.ReactNode;
   sidebarExpanded?: boolean;
 };
 
 export function DashboardHeader({
+  currentUser,
   mobileNavTrigger,
   sidebarExpanded = false,
 }: DashboardHeaderProps) {
+  const router = useRouter();
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -87,8 +93,8 @@ export function DashboardHeader({
                   <CircleUserRound className="size-4" />
                 </span>
                 <span className="hidden text-left sm:block">
-                  <span className="block text-sm font-medium">Asad</span>
-                  <span className="block text-xs text-muted-foreground">Lead reviewer</span>
+                  <span className="block text-sm font-medium">{currentUser.name}</span>
+                  <span className="block text-xs text-muted-foreground">{currentUser.email}</span>
                 </span>
                 <ChevronDown className="size-4 text-muted-foreground" />
               </DropdownMenuTrigger>
@@ -104,6 +110,17 @@ export function DashboardHeader({
                 <DropdownMenuItem>
                   <Settings className="size-4" />
                   Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const supabase = createSupabaseBrowserClient();
+                    await supabase.auth.signOut();
+                    router.push("/login");
+                    router.refresh();
+                  }}
+                >
+                  <LogOut className="size-4" />
+                  Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -54,7 +54,7 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Latest version</p>
-              <p className="text-sm font-semibold text-foreground">{latestVersion.label}</p>
+              <p className="text-sm font-semibold text-foreground">{latestVersion?.label ?? "Not started"}</p>
             </div>
           </div>
         </div>
@@ -89,9 +89,9 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <p className="font-medium text-foreground">Prompt coverage</p>
-            <p className="text-muted-foreground">{latestVersion.promptCoverage}%</p>
+            <p className="text-muted-foreground">{latestVersion?.promptCoverage ?? 0}%</p>
           </div>
-          <Progress value={latestVersion.promptCoverage} className="gap-0" />
+          <Progress value={latestVersion?.promptCoverage ?? 0} className="gap-0" />
         </div>
 
         <div className="flex flex-wrap gap-2">
