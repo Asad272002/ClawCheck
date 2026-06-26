@@ -14,7 +14,7 @@ import {
   evaluationSchema,
   type EvaluationSchema,
 } from "@/lib/schemas/evaluation.schema";
-import type { AgentWorkspace, EvaluationCategory, TestCase } from "@/lib/types";
+import type { AgentWorkspace, EvaluationCategory, EvaluationReport, TestCase } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,13 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { RiskBadge } from "@/components/shared/risk-badge";
+import { formatRelativeTime } from "@/lib/utils";
 
 type AgentSetupFormProps = {
   groupedTestCases: Record<EvaluationCategory, TestCase[]>;
   workspaces: AgentWorkspace[];
+  workspaceReportHistory: Partial<Record<string, EvaluationReport[]>>;
 };
 
 const evaluationResolver: Resolver<EvaluationSchema> = async (
@@ -205,7 +208,7 @@ function GenerationExperience({ progress, stage }: { progress: number; stage: st
   );
 }
 
-export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormProps) {
+export function AgentSetupForm({ groupedTestCases, workspaces, workspaceReportHistory }: AgentSetupFormProps) {
   const router = useRouter();
   const { isLoading, runEvaluation } = useEvaluation();
   const [currentStep, setCurrentStep] = useState(1);
@@ -288,6 +291,15 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
   };
   const unlockedStep = completedSteps.one ? (completedSteps.two ? (completedSteps.three ? 4 : 3) : 2) : 1;
   const selectedWorkspace = workspaces.find((workspace) => workspace.id === selectedWorkspaceId);
+  const selectedWorkspaceHistory = useMemo(
+    () => (selectedWorkspaceId ? workspaceReportHistory[selectedWorkspaceId] ?? [] : []),
+    [selectedWorkspaceId, workspaceReportHistory]
+  );
+  const recentWorkspaceHistory = selectedWorkspaceHistory.slice(0, 4);
+
+  function describePrompt(prompt: string) {
+    return prompt.length > 110 ? `${prompt.slice(0, 107)}...` : prompt;
+  }
 
   const continueToStep = async (fields: Array<keyof EvaluationSchema>, nextStep: number) => {
     const valid = await form.trigger(fields);
@@ -376,7 +388,7 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
             <StepCard
               step={1}
               title="Agent and project context"
-              description="Define the agent, give the run a clear purpose, and optionally attach it to a workspace."
+              description="Choose whether this is a one-off review or a workspace-based training run for a single tracked agent."
               active
               completed={completedSteps.one}
               footer={
@@ -386,54 +398,38 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
                 </Button>
               }
             >
-              <div className="grid gap-5 md:grid-cols-2">
-                <div className="space-y-3">
-                  <Label htmlFor="agentName">Agent name</Label>
-                  <Input
-                    id="agentName"
-                    placeholder="e.g. GuardianOps Assistant"
-                    className="rounded-xl border-border bg-background/80"
-                    {...form.register("agentName")}
-                  />
-                  <p className="text-xs text-destructive">{form.formState.errors.agentName?.message}</p>
-                </div>
-                <div className="space-y-3">
-                  <Label htmlFor="agentType">Agent type</Label>
-                  <Input
-                    id="agentType"
-                    placeholder="e.g. Support agent"
-                    className="rounded-xl border-border bg-background/80"
-                    {...form.register("agentType")}
-                  />
-                  <p className="text-xs text-destructive">{form.formState.errors.agentType?.message}</p>
-                </div>
-              </div>
               <div className="space-y-3">
-                <Label htmlFor="agentPurpose">Agent purpose</Label>
-                <Textarea
-                  id="agentPurpose"
-                  rows={4}
-                  placeholder="Describe what this agent is supposed to do and who it serves."
-                  className="rounded-2xl border-border bg-background/80"
-                  {...form.register("agentPurpose")}
-                />
-                <p className="text-xs text-destructive">{form.formState.errors.agentPurpose?.message}</p>
-              </div>
-              <div className="space-y-3">
-                <Label>Save this run under a workspace</Label>
+                <Label>Evaluation mode</Label>
                 <Controller
                   control={form.control}
                   name="workspaceId"
                   render={({ field }) => (
                     <Select
                       value={field.value ?? "__none"}
-                      onValueChange={(value) => field.onChange(value === "__none" ? undefined : value)}
+                      onValueChange={(value) => {
+                        if (value === "__none") {
+                          field.onChange(undefined);
+                          form.setValue("agentName", "", { shouldValidate: true });
+                          form.setValue("agentType", "", { shouldValidate: true });
+                          form.setValue("agentPurpose", "", { shouldValidate: true });
+                          return;
+                        }
+
+                        const workspace = workspaces.find((item) => item.id === value);
+                        field.onChange(value);
+
+                        if (workspace) {
+                          form.setValue("agentName", workspace.agentName, { shouldValidate: true });
+                          form.setValue("agentType", workspace.agentType, { shouldValidate: true });
+                          form.setValue("agentPurpose", workspace.purpose, { shouldValidate: true });
+                        }
+                      }}
                     >
                       <SelectTrigger className="h-12 w-full rounded-xl border-border bg-background/80 px-4">
-                        <SelectValue placeholder="Choose a workspace" />
+                        <SelectValue placeholder="Choose how this evaluation should be tracked" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-border bg-popover">
-                        <SelectItem value="__none">No workspace yet</SelectItem>
+                        <SelectItem value="__none">General one-time evaluation</SelectItem>
                         {workspaces.map((workspace) => (
                           <SelectItem key={workspace.id} value={workspace.id}>
                             <span>{workspace.name}</span>
@@ -445,9 +441,108 @@ export function AgentSetupForm({ groupedTestCases, workspaces }: AgentSetupFormP
                   )}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional for now. Choose a workspace if you want this report tied to a project context later.
+                  Leave the workspace empty for one-time reviews. Select a workspace only when you want to keep training history for that single tracked agent.
                 </p>
               </div>
+
+              {selectedWorkspace ? (
+                <div className="grid gap-4">
+                  <div className="rounded-3xl border border-primary/15 bg-primary/5 p-5">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Workspace agent loaded</p>
+                      <p className="text-sm text-muted-foreground">
+                        This evaluation will be tied to <span className="font-medium text-foreground">{selectedWorkspace.name}</span> and will use the saved agent profile below.
+                      </p>
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-2xl border border-border/70 bg-background/85 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Agent name</p>
+                        <p className="mt-2 text-sm font-medium text-foreground">{selectedWorkspace.agentName}</p>
+                      </div>
+                      <div className="rounded-2xl border border-border/70 bg-background/85 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Agent type</p>
+                        <p className="mt-2 text-sm font-medium text-foreground">{selectedWorkspace.agentType}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-border/70 bg-background/85 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Saved workspace purpose</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground">{selectedWorkspace.purpose}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-border/80 bg-card/75 p-5">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Previous runs on this agent</p>
+                      <p className="text-sm text-muted-foreground">
+                        Review what has already been tested in this workspace before you run the next evaluation.
+                      </p>
+                    </div>
+
+                    {recentWorkspaceHistory.length > 0 ? (
+                      <div className="mt-4 space-y-3">
+                        {recentWorkspaceHistory.map((report) => (
+                          <div key={report.id} className="rounded-2xl border border-border/70 bg-background/85 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium text-foreground">{report.category}</p>
+                                <p className="text-xs text-muted-foreground">{formatRelativeTime(report.createdAt)}</p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                                  {report.finalScore}
+                                </span>
+                                <RiskBadge status={report.status} />
+                                <RiskBadge riskLevel={report.riskLevel} />
+                              </div>
+                            </div>
+                            <p className="mt-3 text-sm text-muted-foreground">{describePrompt(report.testPrompt)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
+                        No saved workspace runs yet. This will become the first tracked evaluation for this agent.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="space-y-3">
+                      <Label htmlFor="agentName">Agent name</Label>
+                      <Input
+                        id="agentName"
+                        placeholder="e.g. GuardianOps Assistant"
+                        className="rounded-xl border-border bg-background/80"
+                        {...form.register("agentName")}
+                      />
+                      <p className="text-xs text-destructive">{form.formState.errors.agentName?.message}</p>
+                    </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="agentType">Agent type</Label>
+                      <Input
+                        id="agentType"
+                        placeholder="e.g. Support agent"
+                        className="rounded-xl border-border bg-background/80"
+                        {...form.register("agentType")}
+                      />
+                      <p className="text-xs text-destructive">{form.formState.errors.agentType?.message}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="agentPurpose">Agent purpose</Label>
+                    <Textarea
+                      id="agentPurpose"
+                      rows={4}
+                      placeholder="Describe what this agent is supposed to do and who it serves."
+                      className="rounded-2xl border-border bg-background/80"
+                      {...form.register("agentPurpose")}
+                    />
+                    <p className="text-xs text-destructive">{form.formState.errors.agentPurpose?.message}</p>
+                  </div>
+                </>
+              )}
             </StepCard>
           ) : null}
 

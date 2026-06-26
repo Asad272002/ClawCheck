@@ -170,6 +170,7 @@ export default async function DashboardPage() {
                         <TableHead>Score</TableHead>
                         <TableHead>Risk</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Action</TableHead>
                         <TableHead className="text-right">Updated</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -192,6 +193,13 @@ export default async function DashboardPage() {
                           </TableCell>
                           <TableCell>
                             <RiskBadge status={report.status} />
+                          </TableCell>
+                          <TableCell>
+                            <Link href={`/evaluations/${report.id}`}>
+                              <Button variant="outline" size="sm" className="rounded-lg">
+                                Check report
+                              </Button>
+                            </Link>
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">
                             {formatRelativeTime(report.createdAt)}

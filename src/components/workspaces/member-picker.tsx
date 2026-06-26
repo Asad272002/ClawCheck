@@ -12,10 +12,10 @@ import type { WorkspaceMemberCandidate } from "@/lib/types";
 type MemberPickerProps = {
   inputName: string;
   inputId: string;
-  label: string;
-  description: string;
   placeholder: string;
   excludedEmails?: string[];
+  label?: string;
+  description?: string;
 };
 
 type SearchResponse = {
@@ -47,10 +47,10 @@ function CandidateAvatar({ candidate }: { candidate: WorkspaceMemberCandidate })
 export function MemberPicker({
   inputName,
   inputId,
-  label,
-  description,
   placeholder,
   excludedEmails = [],
+  label,
+  description,
 }: MemberPickerProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -60,11 +60,13 @@ export function MemberPicker({
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   const blockedEmails = useMemo(
     () => new Set([...excludedEmails.map(normalizeEmail), ...selected.map((candidate) => normalizeEmail(candidate.email))]),
     [excludedEmails, selected]
   );
+  const trimmedQuery = query.trim();
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -78,54 +80,14 @@ export function MemberPicker({
   }, []);
 
   useEffect(() => {
-    if (query.trim().length < 2) {
-      abortControllerRef.current?.abort();
-      setResults([]);
-      setLoading(false);
-      setError(null);
-      setOpen(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const controller = new AbortController();
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = controller;
-
-    const timeoutId = window.setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/profiles/search?q=${encodeURIComponent(query.trim())}`, {
-          method: "GET",
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error("Search failed");
-        }
-
-        const payload = (await response.json()) as SearchResponse;
-        setResults(payload.items);
-        setOpen(true);
-      } catch (searchError) {
-        if ((searchError as Error).name === "AbortError") {
-          return;
-        }
-
-        setResults([]);
-        setError("Unable to search registered members right now.");
-      } finally {
-        setLoading(false);
-      }
-    }, 220);
-
     return () => {
-      controller.abort();
-      window.clearTimeout(timeoutId);
+      abortControllerRef.current?.abort();
+
+      if (searchTimeoutRef.current !== null) {
+        window.clearTimeout(searchTimeoutRef.current);
+      }
     };
-  }, [query]);
+  }, []);
 
   const visibleResults = results.filter((candidate) => !blockedEmails.has(normalizeEmail(candidate.email)));
   const serializedSelectedEmails = selected.map((candidate) => candidate.email).join(",");
@@ -145,6 +107,56 @@ export function MemberPicker({
     setSelected((current) => current.filter((candidate) => normalizeEmail(candidate.email) !== normalizeEmail(email)));
   }
 
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    abortControllerRef.current?.abort();
+
+    if (searchTimeoutRef.current !== null) {
+      window.clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (value.trim().length < 2) {
+      setResults([]);
+      setLoading(false);
+      setError(null);
+      setOpen(false);
+      return;
+    }
+
+    setOpen(true);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    searchTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/profiles/search?q=${encodeURIComponent(value.trim())}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error("Search failed");
+        }
+
+        const payload = (await response.json()) as SearchResponse;
+        setResults(payload.items);
+      } catch (searchError) {
+        if ((searchError as Error).name === "AbortError") {
+          return;
+        }
+
+        setResults([]);
+        setError("Unable to search registered members right now.");
+      } finally {
+        setLoading(false);
+      }
+    }, 220);
+  }
+
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter" && visibleResults.length > 0) {
       event.preventDefault();
@@ -158,12 +170,12 @@ export function MemberPicker({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={inputId}>{label}</Label>
+      {label ? <Label htmlFor={inputId}>{label}</Label> : null}
       <input type="hidden" name={inputName} value={serializedSelectedEmails} />
 
       <div ref={containerRef} className="relative">
-        <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-3">
-          <div className="flex flex-wrap gap-2">
+        <div className="rounded-2xl border border-border/70 bg-background/80 p-3">
+          <div className="flex min-h-8 flex-wrap gap-2">
             {selected.map((candidate) => (
               <Badge
                 key={candidate.id}
@@ -193,13 +205,17 @@ export function MemberPicker({
             ))}
           </div>
 
-          <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/70 bg-card/70 px-3">
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-border/70 bg-card/70 px-3">
             <Search className="size-4 text-muted-foreground" />
             <Input
               id={inputId}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onFocus={() => setOpen(true)}
+              onChange={(event) => handleQueryChange(event.target.value)}
+              onFocus={() => {
+                if (trimmedQuery.length >= 2 || visibleResults.length > 0) {
+                  setOpen(true);
+                }
+              }}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
@@ -209,8 +225,8 @@ export function MemberPicker({
           </div>
         </div>
 
-        {open && (query.trim().length >= 2 || error) ? (
-          <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-[1.25rem] border border-border/80 bg-popover shadow-xl">
+        {open && (trimmedQuery.length >= 2 || error) ? (
+          <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-border/80 bg-popover shadow-xl">
             <div className="max-h-72 overflow-y-auto p-2">
               {error ? <p className="px-3 py-3 text-sm text-destructive">{error}</p> : null}
 
@@ -243,7 +259,7 @@ export function MemberPicker({
         ) : null}
       </div>
 
-      <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+      {description ? <p className="text-sm leading-6 text-muted-foreground">{description}</p> : null}
     </div>
   );
 }

@@ -82,6 +82,7 @@ export type AgentWorkspaceVersion = {
 
 export type WorkspaceEvaluationRun = {
   id: string;
+  reportId?: string;
   versionId: string;
   versionLabel?: string;
   createdAt: string;
@@ -133,6 +134,7 @@ export type AgentWorkspace = {
   slug: string;
   name: string;
   agentName: string;
+  agentType: string;
   purpose: string;
   description: string;
   owner: string;

@@ -1,13 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { MailPlus, Users } from "lucide-react";
+import { MailPlus, ShieldCheck, UserPlus2, Users } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberPicker } from "@/components/workspaces/member-picker";
 import type { WorkspaceMember } from "@/lib/types";
 
@@ -16,7 +15,7 @@ export type WorkspaceMembersPanelState = {
   success: string | null;
 };
 
-type WorkspaceMembersPanelProps = {
+type SharedProps = {
   members: WorkspaceMember[];
   canManage: boolean;
   workspaceSlug: string;
@@ -34,71 +33,111 @@ function SubmitButton() {
   );
 }
 
-function MemberAvatar({ member }: { member: WorkspaceMember }) {
+function MemberAvatar({
+  member,
+  className = "size-8 rounded-full",
+  fallbackClassName = "size-8 rounded-full text-xs",
+}: {
+  member: WorkspaceMember;
+  className?: string;
+  fallbackClassName?: string;
+}) {
   if (member.avatarUrl) {
     return (
       <span
         aria-label={`${member.name} avatar`}
-        className="size-11 rounded-2xl bg-cover bg-center"
+        className={`${className} bg-cover bg-center`}
         style={{ backgroundImage: `url("${member.avatarUrl}")` }}
       />
     );
   }
 
   return (
-    <span className="flex size-11 items-center justify-center rounded-2xl bg-foreground text-sm font-semibold text-background">
+    <span className={`flex items-center justify-center bg-foreground font-semibold text-background ${fallbackClassName}`}>
       {member.name.charAt(0).toUpperCase()}
     </span>
   );
 }
 
-export function WorkspaceMembersPanel({ members, canManage, workspaceSlug, action }: WorkspaceMembersPanelProps) {
-  const [state, formAction] = useActionState(action, { error: null, success: null });
+export function WorkspaceMembersSummary({ members }: Pick<SharedProps, "members">) {
+  const visibleMembers = members.slice(0, 6);
+  const remainingCount = Math.max(0, members.length - visibleMembers.length);
 
   return (
-    <Card className="section-panel overflow-hidden">
-      <CardHeader className="border-b border-border/70 pb-5">
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-primary/10 p-2 text-primary">
-            <Users className="size-4" />
-          </div>
-          <div>
-            <CardTitle>Workspace members</CardTitle>
-            <CardDescription>
-              Owners can add registered ClawCheck users by email so they can contribute to this workspace.
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-6 p-6">
-        <div className="grid gap-3">
-          {members.map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/70 p-3"
-            >
-              <MemberAvatar member={member} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-foreground">{member.name}</p>
-                <p className="truncate text-sm text-muted-foreground">{member.email}</p>
-              </div>
-              <Badge variant="outline" className="rounded-full border-border bg-background/80 capitalize">
-                {member.role}
-              </Badge>
-            </div>
-          ))}
-        </div>
+    <div className="flex flex-col gap-3 rounded-[1.5rem] border border-border/80 bg-card/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">Workspace members</p>
+        <p className="text-sm text-muted-foreground">A quick view of who can access this workspace and what role they have.</p>
+      </div>
 
-        {canManage ? (
-          <form action={formAction} className="grid gap-4 rounded-[1.5rem] border border-border/70 bg-background/60 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {visibleMembers.map((member) => (
+          <div
+            key={member.id}
+            className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-2.5 py-2 pr-3"
+          >
+            <MemberAvatar member={member} />
+            <div className="min-w-0">
+              <p className="max-w-32 truncate text-sm font-medium text-foreground">{member.name}</p>
+              <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
+            </div>
+          </div>
+        ))}
+
+        {remainingCount > 0 ? (
+          <Badge variant="outline" className="rounded-full border-border bg-background/80 px-3 py-2">
+            +{remainingCount} more
+          </Badge>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function WorkspaceMembersTrigger({ members, canManage, workspaceSlug, action }: SharedProps) {
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const owners = members.filter((member) => member.role === "owner");
+  const teammates = members.filter((member) => member.role === "member");
+  const [state, formAction] = useActionState(
+    async (currentState: WorkspaceMembersPanelState, formData: FormData) => {
+      const nextState = await action(currentState, formData);
+
+      if (nextState.success) {
+        setIsComposerOpen(false);
+      }
+
+      return nextState;
+    },
+    { error: null, success: null }
+  );
+
+  if (!canManage) {
+    return null;
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        className="rounded-xl"
+        onClick={() => setIsComposerOpen((current) => !current)}
+      >
+        <UserPlus2 className="size-4" />
+        Add members
+      </Button>
+
+      {isComposerOpen ? (
+        <div className="absolute right-0 top-full z-30 mt-3 w-[min(30rem,calc(100vw-2rem))] rounded-[1.5rem] border border-border/80 bg-popover/98 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.2)] backdrop-blur">
+          <form action={formAction} className="grid gap-4">
             <input type="hidden" name="workspaceSlug" value={workspaceSlug} />
 
-            {state.error ? (
-              <Alert variant="destructive" className="border-destructive/30">
-                <AlertTitle>Unable to add members</AlertTitle>
-                <AlertDescription>{state.error}</AlertDescription>
-              </Alert>
-            ) : null}
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">Add members</p>
+              <p className="text-sm text-muted-foreground">
+                Search by registered email or name, then add teammates to this workspace.
+              </p>
+            </div>
 
             {state.success ? (
               <Alert className="border-emerald-500/25 bg-emerald-500/5">
@@ -107,21 +146,56 @@ export function WorkspaceMembersPanel({ members, canManage, workspaceSlug, actio
               </Alert>
             ) : null}
 
+            {state.error ? (
+              <Alert variant="destructive" className="border-destructive/30">
+                <AlertTitle>Unable to add members</AlertTitle>
+                <AlertDescription>{state.error}</AlertDescription>
+              </Alert>
+            ) : null}
+
             <MemberPicker
               inputId="workspace-member-emails"
               inputName="memberEmails"
-              label="Add member emails"
-              placeholder="Search registered teammates"
-              description="Type a name or email to filter registered ClawCheck users, then select them from the dropdown."
+              placeholder="Type teammate email or name"
               excludedEmails={members.map((member) => member.email)}
             />
 
-            <div className="flex justify-end">
+            <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <ShieldCheck className="size-4 text-primary" />
+                  {owners.length} owner{owners.length === 1 ? "" : "s"}
+                </div>
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Users className="size-4 text-primary" />
+                  {teammates.length} teammate{teammates.length === 1 ? "" : "s"}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {members.map((member) => (
+                  <div
+                    key={member.id}
+                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-2.5 py-2 pr-3"
+                  >
+                    <MemberAvatar member={member} />
+                    <div className="min-w-0">
+                      <p className="max-w-28 truncate text-sm font-medium text-foreground">{member.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setIsComposerOpen(false)}>
+                Cancel
+              </Button>
               <SubmitButton />
             </div>
           </form>
-        ) : null}
-      </CardContent>
-    </Card>
+        </div>
+      ) : null}
+    </div>
   );
 }

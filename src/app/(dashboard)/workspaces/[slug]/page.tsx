@@ -5,7 +5,8 @@ import { ArrowLeft, ArrowRight, ShieldCheck, Sparkles, Target, TriangleAlert } f
 
 import { FutureWorkspaceAction } from "@/components/workspaces/future-workspace-action";
 import {
-  WorkspaceMembersPanel,
+  WorkspaceMembersSummary,
+  WorkspaceMembersTrigger,
   type WorkspaceMembersPanelState,
 } from "@/components/workspaces/workspace-members-panel";
 import { WorkspaceEvaluationTable } from "@/components/workspaces/workspace-evaluation-table";
@@ -157,6 +158,12 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
         description={workspace.description}
         action={
           <>
+            <WorkspaceMembersTrigger
+              members={workspaceMembers}
+              canManage={canManageMembers}
+              workspaceSlug={workspace.slug}
+              action={addWorkspaceMembersAction}
+            />
             <FutureWorkspaceAction
               label="Plan next iteration"
               description="Iteration planning will connect to saved work items, owners, and sprint workflows."
@@ -171,6 +178,8 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
           </>
         }
       />
+
+      <WorkspaceMembersSummary members={workspaceMembers} />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="section-panel p-6">
@@ -302,13 +311,6 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
         <WorkspaceTrendChart data={trendData} />
         <WorkspaceVersionList versions={workspace.versions} />
       </div>
-
-      <WorkspaceMembersPanel
-        members={workspaceMembers}
-        canManage={canManageMembers}
-        workspaceSlug={workspace.slug}
-        action={addWorkspaceMembersAction}
-      />
 
       <WorkspaceEvaluationTable evaluations={workspace.evaluations} versions={workspace.versions} />
 

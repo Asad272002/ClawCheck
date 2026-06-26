@@ -6,6 +6,7 @@ import { RiskBreakdown } from "@/components/reports/risk-breakdown";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeading } from "@/components/shared/page-heading";
 import { RiskBadge } from "@/components/shared/risk-badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getReports } from "@/lib/db/reports";
 import { formatRelativeTime } from "@/lib/utils";
@@ -50,7 +51,10 @@ export default async function ReportsPage() {
                     <p className="font-medium">{item.agentName}</p>
                     <p className="text-xs text-muted-foreground">{formatRelativeTime(item.createdAt)}</p>
                   </div>
-                  <RiskBadge status={item.status} />
+                  <div className="flex items-center gap-3">
+                    <RiskBadge status={item.status} />
+                    <span className="text-xs font-semibold text-primary">Check report</span>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -67,6 +71,7 @@ export default async function ReportsPage() {
               <TableHead>Risk level</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -89,6 +94,13 @@ export default async function ReportsPage() {
                 <TableCell className="text-muted-foreground">{formatRelativeTime(item.createdAt)}</TableCell>
                 <TableCell>
                   <RiskBadge status={item.status} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Link href={`/evaluations/${item.id}`}>
+                    <Button variant="outline" size="sm" className="rounded-lg">
+                      Check report
+                    </Button>
+                  </Link>
                 </TableCell>
               </TableRow>
             ))}

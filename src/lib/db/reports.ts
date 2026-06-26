@@ -88,6 +88,11 @@ export async function getReportById(id: string) {
   return data ? mapReport(data as ReportRow) : null;
 }
 
+export async function getWorkspaceScopedReports() {
+  const reports = await getReports();
+  return reports.filter((report) => report.workspaceId);
+}
+
 export async function persistReport(report: EvaluationReport, options: PersistReportOptions = {}) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("reports").insert({

@@ -26,6 +26,7 @@ type WorkspaceRow = {
   slug: string;
   name: string;
   agent_name: string;
+  agent_type?: string | null;
   purpose: string;
   description: string;
   owner_name: string;
@@ -158,14 +159,32 @@ function mapRecommendation(row: WorkspaceRecommendationRow): WorkspaceRecommenda
   };
 }
 
+function isMissingAgentTypeColumn(message: string | undefined) {
+  if (!message) {
+    return false;
+  }
+
+  return message.includes("agent_type") && message.includes("does not exist");
+}
+
 export async function fetchWorkspaces() {
   const supabase = await createSupabaseServerClient();
-  const [workspaceResult, versionsResult, evaluationsResult, weaknessesResult, recommendationsResult, reportsResult] =
-    await Promise.all([
-    supabase
+  // Supabase query responses are intentionally widened here because the fallback query omits agent_type
+  // until the matching migration is applied.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let workspaceResult: any = await supabase
+    .from("workspaces")
+    .select("id, slug, name, agent_name, agent_type, purpose, description, owner_name, owner_user_id, team, health, primary_goal, last_updated, tags")
+    .order("last_updated", { ascending: false });
+
+  if (workspaceResult.error && isMissingAgentTypeColumn(workspaceResult.error.message)) {
+    workspaceResult = await supabase
       .from("workspaces")
       .select("id, slug, name, agent_name, purpose, description, owner_name, owner_user_id, team, health, primary_goal, last_updated, tags")
-      .order("last_updated", { ascending: false }),
+      .order("last_updated", { ascending: false });
+  }
+
+  const [versionsResult, evaluationsResult, weaknessesResult, recommendationsResult, reportsResult] = await Promise.all([
     supabase
       .from("workspace_versions")
       .select("id, workspace_id, label, released_at, summary, safety_score, evaluation_count, prompt_coverage, focus_areas")
@@ -187,7 +206,7 @@ export async function fetchWorkspaces() {
       .select("id, workspace_id, created_at, category, final_score, risk_level, status, summary, weaknesses, recommendations")
       .not("workspace_id", "is", null)
       .order("created_at", { ascending: false }),
-    ]);
+  ]);
 
   if (workspaceResult.error) {
     throw new Error(`Unable to load workspaces: ${workspaceResult.error.message}`);
@@ -244,6 +263,7 @@ export async function fetchWorkspaces() {
     slug: row.slug,
     name: row.name,
     agentName: row.agent_name,
+    agentType: row.agent_type?.trim() || "AI agent",
     purpose: row.purpose,
     description: row.description,
     owner: row.owner_name,

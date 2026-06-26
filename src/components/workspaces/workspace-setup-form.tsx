@@ -67,7 +67,7 @@ export function WorkspaceSetupForm({ action }: WorkspaceSetupFormProps) {
             </div>
             <div className="space-y-1">
               <p className="font-medium text-foreground">Ready for contribution</p>
-              <p className="text-sm leading-6 text-muted-foreground">Members can join the same workspace after creation and contribute to its progress.</p>
+              <p className="text-sm leading-6 text-muted-foreground">Each workspace focuses on one agent, so teams can track that agent&apos;s evaluation progress over time.</p>
             </div>
           </CardContent>
         </Card>
@@ -106,6 +106,13 @@ export function WorkspaceSetupForm({ action }: WorkspaceSetupFormProps) {
               <Label htmlFor="team">Team</Label>
               <Input id="team" name="team" placeholder="Safety Review" className="h-11 rounded-xl px-4" />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="agentType">Agent type</Label>
+              <Input id="agentType" name="agentType" placeholder="Support agent" className="h-11 rounded-xl px-4" required />
+            </div>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="tags">Tags</Label>
               <Input id="tags" name="tags" placeholder="Privacy, Human Oversight, Confidence" className="h-11 rounded-xl px-4" />

@@ -29,6 +29,7 @@ async function createWorkspaceAction(_: WorkspaceSetupFormState, formData: FormD
 
     const name = formData.get("name")?.toString().trim() ?? "";
     const agentName = formData.get("agentName")?.toString().trim() ?? "";
+    const agentType = formData.get("agentType")?.toString().trim() ?? "";
     const purpose = formData.get("purpose")?.toString().trim() ?? "";
     const description = formData.get("description")?.toString().trim() ?? "";
     const team = formData.get("team")?.toString().trim() || "Personal Workspace";
@@ -39,7 +40,7 @@ async function createWorkspaceAction(_: WorkspaceSetupFormState, formData: FormD
       .map((value) => value.trim())
       .filter(Boolean);
 
-    if (!name || !agentName || !purpose || !description || !primaryGoal) {
+    if (!name || !agentName || !agentType || !purpose || !description || !primaryGoal) {
       return {
         error: "Please fill in every required workspace field before continuing.",
       };
@@ -58,11 +59,12 @@ async function createWorkspaceAction(_: WorkspaceSetupFormState, formData: FormD
     const slug = `${slugBase}-${workspaceId.slice(-4)}`;
     const now = new Date().toISOString();
 
-    const { error: workspaceError } = await supabase.from("workspaces").insert({
+    let workspaceInsertResult = await supabase.from("workspaces").insert({
       id: workspaceId,
       slug,
       name,
       agent_name: agentName,
+      agent_type: agentType,
       purpose,
       description,
       owner_name: currentUser.name,
@@ -73,6 +75,26 @@ async function createWorkspaceAction(_: WorkspaceSetupFormState, formData: FormD
       last_updated: now,
       tags,
     });
+
+    if (workspaceInsertResult.error?.message?.includes("agent_type") && workspaceInsertResult.error.message.includes("does not exist")) {
+      workspaceInsertResult = await supabase.from("workspaces").insert({
+        id: workspaceId,
+        slug,
+        name,
+        agent_name: agentName,
+        purpose,
+        description,
+        owner_name: currentUser.name,
+        owner_user_id: currentUser.id,
+        team,
+        health: "Stable",
+        primary_goal: primaryGoal,
+        last_updated: now,
+        tags,
+      });
+    }
+
+    const { error: workspaceError } = workspaceInsertResult;
 
     if (workspaceError) {
       return {
@@ -115,7 +137,7 @@ export default function NewWorkspacePage() {
       <PageHeading
         eyebrow="New Workspace"
         title="Create a project workspace"
-        description="Set up an AI agent project with a cleaner structure, better goals, and optional registered teammates from day one."
+        description="Set up one tracked agent, define how that agent should be evaluated over time, and invite optional registered teammates from day one."
       />
 
       <Card className="section-panel overflow-hidden">
