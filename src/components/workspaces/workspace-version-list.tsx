@@ -10,6 +10,29 @@ type WorkspaceVersionListProps = {
 };
 
 export function WorkspaceVersionList({ versions }: WorkspaceVersionListProps) {
+  if (versions.length === 0) {
+    return (
+      <Card className="section-panel h-full">
+        <CardContent className="space-y-5 p-6">
+          <div className="space-y-1">
+            <p className="text-lg font-semibold text-foreground">Version history</p>
+            <p className="text-sm text-muted-foreground">
+              Each iteration tracks score changes, prompt coverage, and what changed in the agent.
+            </p>
+          </div>
+          <div className="flex min-h-[260px] items-center justify-center rounded-[1.75rem] border border-dashed border-border/80 bg-background/60 px-6 text-center">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">No versions recorded yet</p>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                This workspace can still collect report history now, and version snapshots can be added later once you want formal iteration tracking.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="section-panel h-full">
       <CardContent className="space-y-5 p-6">

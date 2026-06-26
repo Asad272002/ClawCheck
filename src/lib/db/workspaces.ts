@@ -288,13 +288,27 @@ export function getLatestWorkspaceVersion(workspace: AgentWorkspace): AgentWorks
 }
 
 export function getWorkspaceTrendData(workspace: AgentWorkspace) {
-  return [...workspace.versions]
+  const versionTrendData = [...workspace.versions]
     .sort((left, right) => new Date(left.releasedAt).getTime() - new Date(right.releasedAt).getTime())
     .map((version) => ({
       version: version.label,
       score: version.safetyScore,
       coverage: version.promptCoverage,
       evaluations: version.evaluationCount,
+    }));
+
+  if (versionTrendData.length > 0) {
+    return versionTrendData;
+  }
+
+  return [...workspace.evaluations]
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
+    .map((evaluation, index) => ({
+      version: `Run ${index + 1}`,
+      detail: `${evaluation.category}${evaluation.versionLabel ? ` - ${evaluation.versionLabel}` : ""}`,
+      score: evaluation.score,
+      coverage: 0,
+      evaluations: index + 1,
     }));
 }
 
