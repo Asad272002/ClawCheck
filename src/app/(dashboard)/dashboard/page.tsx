@@ -16,21 +16,57 @@ export default async function DashboardPage() {
   const [workspaces, reports] = await Promise.all([fetchWorkspaces(), getReports()]);
   const dashboard = getAccessibleWorkspaceDashboard(workspaces);
   const firstName = currentUser.name.split(" ")[0] || currentUser.name;
-  const averageScore = dashboard.stats.averageLatestScore;
+  const workspacesById = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
+  const dashboardEvaluationIds = new Set(dashboard.evaluations.map((evaluation) => evaluation.id));
+  const linkedReportEvaluations = reports
+    .filter((report) => report.workspaceId)
+    .filter((report) => !dashboardEvaluationIds.has(report.id))
+    .map((report) => {
+      const workspace = workspacesById.get(report.workspaceId!);
+
+      if (!workspace) {
+        return null;
+      }
+
+      return {
+        id: report.id,
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        agentName: report.agentName,
+        versionId: `generated-report:${report.id}`,
+        versionLabel: "Generated report",
+        createdAt: report.createdAt,
+        category: report.category,
+        score: report.finalScore,
+        riskLevel: report.riskLevel,
+        status: report.status,
+        summary: report.summary,
+        weaknesses: report.weaknesses,
+        improvements: report.recommendations,
+      };
+    })
+    .filter((evaluation): evaluation is NonNullable<typeof evaluation> => Boolean(evaluation));
+  const combinedEvaluations = [...dashboard.evaluations, ...linkedReportEvaluations].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+  );
+  const averageScore =
+    combinedEvaluations.length > 0
+      ? Math.round(combinedEvaluations.reduce((total, evaluation) => total + evaluation.score, 0) / combinedEvaluations.length)
+      : dashboard.stats.averageLatestScore;
   const scoreBands = {
-    excellent: dashboard.evaluations.filter((evaluation) => evaluation.score >= 80).length,
-    moderate: dashboard.evaluations.filter((evaluation) => evaluation.score >= 60 && evaluation.score < 80).length,
-    low: dashboard.evaluations.filter((evaluation) => evaluation.score < 60).length,
+    excellent: combinedEvaluations.filter((evaluation) => evaluation.score >= 80).length,
+    moderate: combinedEvaluations.filter((evaluation) => evaluation.score >= 60 && evaluation.score < 80).length,
+    low: combinedEvaluations.filter((evaluation) => evaluation.score < 60).length,
   };
   const riskMix = {
-    low: dashboard.evaluations.filter((evaluation) => evaluation.riskLevel === "Low").length,
-    medium: dashboard.evaluations.filter((evaluation) => evaluation.riskLevel === "Medium").length,
-    high: dashboard.evaluations.filter((evaluation) => evaluation.riskLevel === "High").length,
+    low: combinedEvaluations.filter((evaluation) => evaluation.riskLevel === "Low").length,
+    medium: combinedEvaluations.filter((evaluation) => evaluation.riskLevel === "Medium").length,
+    high: combinedEvaluations.filter((evaluation) => evaluation.riskLevel === "High").length,
   };
   const statusMix = {
-    pass: dashboard.stats.passCount,
-    review: dashboard.stats.reviewCount,
-    fail: dashboard.stats.failCount,
+    pass: combinedEvaluations.filter((evaluation) => evaluation.status === "Pass").length,
+    review: combinedEvaluations.filter((evaluation) => evaluation.status === "Review").length,
+    fail: combinedEvaluations.filter((evaluation) => evaluation.status === "Fail").length,
   };
   const workspaceMix = {
     improving: dashboard.workspaces.filter((workspace) => workspace.health === "Improving").length,
@@ -196,7 +232,7 @@ export default async function DashboardPage() {
     {
       title: "Evaluation distribution",
       description: `How ${firstName}'s accessible runs are scoring.`,
-      value: `${dashboard.stats.totalEvaluations}`,
+      value: `${combinedEvaluations.length}`,
       helper: "runs",
       data: [
         { label: "80-100", value: scoreBands.excellent, color: "#10b981" },
@@ -237,7 +273,7 @@ export default async function DashboardPage() {
             {`${firstName}'s AI safety workspace`}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Track {dashboard.stats.workspaceCount} active workspaces, {dashboard.stats.totalEvaluations} evaluation runs, and the repeated issues that still need attention.
+            Track {dashboard.stats.workspaceCount} active workspaces, {combinedEvaluations.length} evaluation runs, and the repeated issues that still need attention.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -371,7 +407,7 @@ export default async function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dashboard.evaluations.map((evaluation) => (
+                {combinedEvaluations.map((evaluation) => (
                   <TableRow key={evaluation.id} className="border-border">
                     <TableCell>
                       <Link href="/workspaces" className="font-medium hover:text-primary">

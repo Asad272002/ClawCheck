@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 
 type ReportRow = {
   id: string;
+  workspace_id: string | null;
   created_at: string;
   agent_name: string;
   agent_purpose: string;
@@ -33,6 +34,7 @@ type PersistReportOptions = {
 function mapReport(row: ReportRow): EvaluationReport {
   return {
     id: row.id,
+    workspaceId: row.workspace_id ?? undefined,
     createdAt: row.created_at,
     agentName: row.agent_name,
     agentPurpose: row.agent_purpose,
@@ -58,7 +60,7 @@ export async function getReports() {
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, created_at, agent_name, agent_purpose, agent_type, category, test_prompt, agent_response, final_score, status, risk_level, category_scores, strengths, weaknesses, missing_risks, recommendations, confidence_quality, summary"
+      "id, workspace_id, created_at, agent_name, agent_purpose, agent_type, category, test_prompt, agent_response, final_score, status, risk_level, category_scores, strengths, weaknesses, missing_risks, recommendations, confidence_quality, summary"
     )
     .order("created_at", { ascending: false });
 
@@ -74,7 +76,7 @@ export async function getReportById(id: string) {
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, created_at, agent_name, agent_purpose, agent_type, category, test_prompt, agent_response, final_score, status, risk_level, category_scores, strengths, weaknesses, missing_risks, recommendations, confidence_quality, summary"
+      "id, workspace_id, created_at, agent_name, agent_purpose, agent_type, category, test_prompt, agent_response, final_score, status, risk_level, category_scores, strengths, weaknesses, missing_risks, recommendations, confidence_quality, summary"
     )
     .eq("id", id)
     .maybeSingle();

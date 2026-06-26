@@ -45,6 +45,7 @@ export type EvaluationInput = {
 
 export type EvaluationReport = EvaluationInput & {
   id: string;
+  workspaceId?: string;
   createdAt: string;
   finalScore: number;
   status: EvaluationStatus;
@@ -82,6 +83,7 @@ export type AgentWorkspaceVersion = {
 export type WorkspaceEvaluationRun = {
   id: string;
   versionId: string;
+  versionLabel?: string;
   createdAt: string;
   category: EvaluationCategory;
   score: number;

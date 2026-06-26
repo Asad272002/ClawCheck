@@ -81,6 +81,19 @@ type WorkspaceRecommendationRow = {
   target_version: string;
 };
 
+type WorkspaceLinkedReportRow = {
+  id: string;
+  workspace_id: string;
+  created_at: string;
+  category: WorkspaceEvaluationRun["category"];
+  final_score: number;
+  risk_level: WorkspaceEvaluationRun["riskLevel"];
+  status: WorkspaceEvaluationRun["status"];
+  summary: string;
+  weaknesses: string[] | null;
+  recommendations: string[] | null;
+};
+
 function mapVersion(row: WorkspaceVersionRow): AgentWorkspaceVersion {
   return {
     id: row.id,
@@ -109,6 +122,22 @@ function mapEvaluation(row: WorkspaceEvaluationRow): WorkspaceEvaluationRun {
   };
 }
 
+function mapWorkspaceLinkedReport(row: WorkspaceLinkedReportRow): WorkspaceEvaluationRun {
+  return {
+    id: row.id,
+    versionId: `generated-report:${row.id}`,
+    versionLabel: "Generated report",
+    createdAt: row.created_at,
+    category: row.category,
+    score: row.final_score,
+    riskLevel: row.risk_level,
+    status: row.status,
+    summary: row.summary,
+    weaknesses: row.weaknesses ?? [],
+    improvements: row.recommendations ?? [],
+  };
+}
+
 function mapWeakness(row: WorkspaceWeaknessRow): WorkspaceWeaknessInsight {
   return {
     label: row.label,
@@ -131,7 +160,8 @@ function mapRecommendation(row: WorkspaceRecommendationRow): WorkspaceRecommenda
 
 export async function fetchWorkspaces() {
   const supabase = await createSupabaseServerClient();
-  const [workspaceResult, versionsResult, evaluationsResult, weaknessesResult, recommendationsResult] = await Promise.all([
+  const [workspaceResult, versionsResult, evaluationsResult, weaknessesResult, recommendationsResult, reportsResult] =
+    await Promise.all([
     supabase
       .from("workspaces")
       .select("id, slug, name, agent_name, purpose, description, owner_name, owner_user_id, team, health, primary_goal, last_updated, tags")
@@ -152,7 +182,12 @@ export async function fetchWorkspaces() {
       .from("workspace_recommendations")
       .select("id, workspace_id, title, description, impact, target_version")
       .order("id"),
-  ]);
+    supabase
+      .from("reports")
+      .select("id, workspace_id, created_at, category, final_score, risk_level, status, summary, weaknesses, recommendations")
+      .not("workspace_id", "is", null)
+      .order("created_at", { ascending: false }),
+    ]);
 
   if (workspaceResult.error) {
     throw new Error(`Unable to load workspaces: ${workspaceResult.error.message}`);
@@ -169,6 +204,9 @@ export async function fetchWorkspaces() {
   if (recommendationsResult.error) {
     throw new Error(`Unable to load workspace recommendations: ${recommendationsResult.error.message}`);
   }
+  if (reportsResult.error) {
+    throw new Error(`Unable to load workspace-linked reports: ${reportsResult.error.message}`);
+  }
 
   const versionsByWorkspace = new Map<string, AgentWorkspaceVersion[]>();
   for (const row of (versionsResult.data ?? []) as WorkspaceVersionRow[]) {
@@ -179,6 +217,10 @@ export async function fetchWorkspaces() {
   const evaluationsByWorkspace = new Map<string, WorkspaceEvaluationRun[]>();
   for (const row of (evaluationsResult.data ?? []) as WorkspaceEvaluationRow[]) {
     const evaluation = mapEvaluation(row);
+    evaluationsByWorkspace.set(row.workspace_id, [...(evaluationsByWorkspace.get(row.workspace_id) ?? []), evaluation]);
+  }
+  for (const row of (reportsResult.data ?? []) as WorkspaceLinkedReportRow[]) {
+    const evaluation = mapWorkspaceLinkedReport(row);
     evaluationsByWorkspace.set(row.workspace_id, [...(evaluationsByWorkspace.get(row.workspace_id) ?? []), evaluation]);
   }
 
@@ -322,7 +364,10 @@ export function getAccessibleWorkspaceDashboard(workspaces: AgentWorkspace[]) {
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       agentName: workspace.agentName,
-      versionLabel: workspace.versions.find((version) => version.id === evaluation.versionId)?.label ?? evaluation.versionId,
+      versionLabel:
+        evaluation.versionLabel ??
+        workspace.versions.find((version) => version.id === evaluation.versionId)?.label ??
+        evaluation.versionId,
     }))
   );
   const repeatedWeaknesses = workspaces.flatMap((workspace) =>
@@ -373,7 +418,10 @@ export function getOwnerWorkspaceDashboard(owner: string, workspaces: AgentWorks
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       agentName: workspace.agentName,
-      versionLabel: workspace.versions.find((version) => version.id === evaluation.versionId)?.label ?? evaluation.versionId,
+      versionLabel:
+        evaluation.versionLabel ??
+        workspace.versions.find((version) => version.id === evaluation.versionId)?.label ??
+        evaluation.versionId,
     }))
   );
   const repeatedWeaknesses = ownedWorkspaces.flatMap((workspace) =>

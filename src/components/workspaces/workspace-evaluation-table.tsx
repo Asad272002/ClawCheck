@@ -42,7 +42,7 @@ export function WorkspaceEvaluationTable({ evaluations, versions }: WorkspaceEva
                   </TableCell>
                   <TableCell>
                     <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                      {versionLabels[evaluation.versionId] ?? evaluation.versionId}
+                      {evaluation.versionLabel ?? versionLabels[evaluation.versionId] ?? evaluation.versionId}
                     </span>
                   </TableCell>
                   <TableCell className="font-medium text-foreground">{evaluation.category}</TableCell>
