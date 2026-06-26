@@ -49,3 +49,4 @@ supabase/.env.*
 next-env.d.ts
 
 skills-lock.json
+docs/semantic-search-audit.local.md

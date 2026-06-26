@@ -9,7 +9,86 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireCurrentUser } from "@/lib/auth/user";
 import { getReports } from "@/lib/db/reports";
 import { fetchWorkspaces, getAccessibleWorkspaceDashboard } from "@/lib/db/workspaces";
+import type { AgentWorkspace, RiskLevel, WorkspaceEvaluationRun } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils";
+
+function normalizeWeaknessLabel(input: string) {
+  return input.replace(/\s+/g, " ").replace(/\.$/, "").trim();
+}
+
+function summarizeRecurringWeaknesses(weaknesses: string[]) {
+  const weaknessCounts = new Map<string, number>();
+
+  for (const weakness of weaknesses) {
+    const normalized = normalizeWeaknessLabel(weakness);
+
+    if (!normalized) {
+      continue;
+    }
+
+    weaknessCounts.set(normalized, (weaknessCounts.get(normalized) ?? 0) + 1);
+  }
+
+  return [...weaknessCounts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count);
+}
+
+function buildFallbackActions({
+  workspaces,
+  combinedEvaluations,
+}: {
+  workspaces: AgentWorkspace[];
+  combinedEvaluations: Array<
+    Pick<WorkspaceEvaluationRun, "score" | "riskLevel" | "improvements" | "weaknesses"> & {
+      workspaceId: string;
+      workspaceName: string;
+      versionLabel?: string;
+    }
+  >;
+}) {
+  const impactOrder: Record<"High" | "Medium" | "Low", number> = {
+    High: 3,
+    Medium: 2,
+    Low: 1,
+  };
+
+  return workspaces
+    .map((workspace) => {
+      const workspaceRuns = combinedEvaluations.filter((evaluation) => evaluation.workspaceId === workspace.id);
+      const latestRun = workspaceRuns[0];
+      const highRiskRuns = workspaceRuns.filter((evaluation) => evaluation.riskLevel === "High").length;
+      const recurringWeakness = summarizeRecurringWeaknesses(workspaceRuns.flatMap((evaluation) => evaluation.weaknesses))[0];
+      const suggestedImprovement = latestRun?.improvements[0] ?? workspace.nextRecommendations[0]?.title ?? recurringWeakness?.label;
+
+      if (!latestRun && !suggestedImprovement) {
+        return null;
+      }
+
+      const impact: "High" | "Medium" | "Low" =
+        latestRun?.riskLevel === "High" || (latestRun?.score ?? 100) < 60 ? "High" : highRiskRuns > 0 ? "Medium" : "Low";
+      const title =
+        latestRun?.riskLevel === "High"
+          ? `Stabilize ${workspace.agentName} before the next approval pass`
+          : recurringWeakness
+            ? `Tighten ${workspace.agentName} around recurring weaknesses`
+            : `Keep ${workspace.agentName} moving with the next iteration`;
+      const description = suggestedImprovement
+        ? `Focus next on ${suggestedImprovement.toLowerCase()}.`
+        : `Review the latest ${workspace.agentName} run and queue the next improvement step.`;
+
+      return {
+        id: `fallback-${workspace.id}`,
+        workspaceName: workspace.name,
+        title,
+        description,
+        impact,
+        targetVersion: latestRun?.versionLabel ?? "Latest run",
+      };
+    })
+    .filter((action): action is NonNullable<typeof action> => Boolean(action))
+    .sort((left, right) => impactOrder[right.impact] - impactOrder[left.impact]);
+}
 
 export default async function DashboardPage() {
   const currentUser = await requireCurrentUser();
@@ -49,10 +128,34 @@ export default async function DashboardPage() {
   const combinedEvaluations = [...dashboard.evaluations, ...linkedReportEvaluations].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
   );
+  const workspaceIds = new Set(dashboard.workspaces.map((workspace) => workspace.id));
+  const workspaceLinkedReports = reports.filter((report) => report.workspaceId && workspaceIds.has(report.workspaceId));
+  const allWeaknesses = combinedEvaluations.flatMap((evaluation) => evaluation.weaknesses);
+  const recurringWeaknesses = summarizeRecurringWeaknesses(allWeaknesses);
+  const nextActions =
+    dashboard.recommendations.length > 0
+      ? dashboard.recommendations
+      : buildFallbackActions({
+          workspaces: dashboard.workspaces,
+          combinedEvaluations: combinedEvaluations.map((evaluation) => ({
+            workspaceId: evaluation.workspaceId,
+            workspaceName: evaluation.workspaceName,
+            score: evaluation.score,
+            riskLevel: evaluation.riskLevel as RiskLevel,
+            improvements: evaluation.improvements,
+            weaknesses: evaluation.weaknesses,
+            versionLabel: evaluation.versionLabel,
+          })),
+        });
   const averageScore =
     combinedEvaluations.length > 0
       ? Math.round(combinedEvaluations.reduce((total, evaluation) => total + evaluation.score, 0) / combinedEvaluations.length)
       : dashboard.stats.averageLatestScore;
+  const trackedVersionCount = new Set(
+    combinedEvaluations
+      .map((evaluation) => evaluation.versionLabel)
+      .filter((value): value is string => Boolean(value))
+  ).size;
   const scoreBands = {
     excellent: combinedEvaluations.filter((evaluation) => evaluation.score >= 80).length,
     moderate: combinedEvaluations.filter((evaluation) => evaluation.score >= 60 && evaluation.score < 80).length,
@@ -73,6 +176,23 @@ export default async function DashboardPage() {
     stable: dashboard.workspaces.filter((workspace) => workspace.health === "Stable").length,
     attention: dashboard.workspaces.filter((workspace) => workspace.health === "Needs attention").length,
   };
+  const overviewFocusCards = [
+    {
+      title: "Workspace-linked reports",
+      value: workspaceLinkedReports.length,
+      helper: "Reports already attached to tracked workspaces",
+    },
+    {
+      title: "Tracked iterations",
+      value: trackedVersionCount,
+      helper: "Unique versions and generated workspace runs",
+    },
+    {
+      title: "Recurring issue clusters",
+      value: recurringWeaknesses.filter((weakness) => weakness.count > 1).length,
+      helper: "Weakness themes showing up more than once",
+    },
+  ];
   const reportAverageScore =
     reports.length > 0 ? Math.round(reports.reduce((total, report) => total + report.finalScore, 0) / reports.length) : 0;
   const recentReports = reports.slice(0, 5);
@@ -314,27 +434,13 @@ export default async function DashboardPage() {
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="subtle-panel px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tracked versions</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {dashboard.stats.trackedVersions}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{`Across ${firstName}'s current workspaces`}</p>
-              </div>
-              <div className="subtle-panel px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Persistent issues</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {dashboard.stats.persistentWeaknessCount}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Weakness themes still reappearing</p>
-              </div>
-              <div className="subtle-panel px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Improving workspaces</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {dashboard.stats.improvingCount}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Projects moving in the right direction</p>
-              </div>
+              {overviewFocusCards.map((card) => (
+                <div key={card.title} className="subtle-panel px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{card.title}</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{card.value}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{card.helper}</p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -348,19 +454,26 @@ export default async function DashboardPage() {
               </p>
             </div>
             <div className="space-y-3">
-              {dashboard.recommendations.slice(0, 3).map((recommendation) => (
-                <div key={recommendation.id} className="subtle-panel flex items-start justify-between gap-3 px-4 py-4">
-                  <div className="space-y-1">
-                    <p className="font-medium text-foreground">{recommendation.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {recommendation.workspaceName} · target {recommendation.targetVersion}
-                    </p>
+              {nextActions.length > 0 ? (
+                nextActions.slice(0, 3).map((recommendation) => (
+                  <div key={recommendation.id} className="subtle-panel flex items-start justify-between gap-3 px-4 py-4">
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">{recommendation.title}</p>
+                      <p className="text-sm text-muted-foreground">{recommendation.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {recommendation.workspaceName} - target {recommendation.targetVersion}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                      {recommendation.impact}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                    {recommendation.impact}
-                  </span>
+                ))
+              ) : (
+                <div className="subtle-panel px-4 py-4 text-sm text-muted-foreground">
+                  Run a few linked evaluations inside a workspace and the dashboard will start surfacing prioritized next steps here.
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -423,9 +536,7 @@ export default async function DashboardPage() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-foreground">
-                        {evaluation.agentName}
-                      </span>
+                      <span className="font-medium text-foreground">{evaluation.agentName}</span>
                     </TableCell>
                     <TableCell>
                       <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
@@ -460,7 +571,7 @@ export default async function DashboardPage() {
             <div className="text-sm text-muted-foreground">
               Top recurring weakness:{" "}
               <span className="font-semibold text-foreground">
-                {dashboard.repeatedWeaknesses[0]?.label ?? "No repeated weakness detected"}
+                {recurringWeaknesses[0]?.label ?? dashboard.repeatedWeaknesses[0]?.label ?? "No repeated weakness detected"}
               </span>
             </div>
             <Link href="/workspaces" className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
