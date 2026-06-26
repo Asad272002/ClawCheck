@@ -126,6 +126,7 @@ function mapEvaluation(row: WorkspaceEvaluationRow): WorkspaceEvaluationRun {
 function mapWorkspaceLinkedReport(row: WorkspaceLinkedReportRow): WorkspaceEvaluationRun {
   return {
     id: row.id,
+    reportId: row.id,
     versionId: `generated-report:${row.id}`,
     versionLabel: "Generated report",
     createdAt: row.created_at,
@@ -304,8 +305,14 @@ export function getWorkspaceSummary(workspace: AgentWorkspace) {
   const latestRuns = [...workspace.evaluations].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
   );
+  const earliestRuns = [...workspace.evaluations].sort(
+    (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+  );
   const latestScore = latestRuns[0]?.score ?? latestVersion?.safetyScore ?? 0;
-  const baselineScore = workspace.versions[0]?.safetyScore ?? latestScore;
+  const earliestVersion = [...workspace.versions].sort(
+    (left, right) => new Date(left.releasedAt).getTime() - new Date(right.releasedAt).getTime()
+  )[0];
+  const baselineScore = earliestRuns[0]?.score ?? earliestVersion?.safetyScore ?? latestScore;
 
   return {
     latestVersion,
