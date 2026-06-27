@@ -72,7 +72,7 @@ Open [http://localhost:3000](http://localhost:3000).
 4. Submit the form to the mock evaluation API.
 5. Review the generated report with scores, strengths, weaknesses, and recommendations.
 
-<img width="6351" height="8192" alt="Untitled diagram-2026-06-26-194816" src="https://github.com/user-attachments/assets/47c49597-4e05-4898-9df8-32f8a2e43445" />
+<img width="6351" height="8192" alt="Claw Flow-2026-06-27-084046" src="https://github.com/user-attachments/assets/0ba172cb-8be6-43ac-bc84-f945e1dcc95b" />
 
 
 ## Hackathon Context
