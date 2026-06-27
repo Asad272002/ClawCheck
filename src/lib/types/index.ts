@@ -43,6 +43,100 @@ export type EvaluationInput = {
   agentResponse: string;
 };
 
+export type SemanticSuggestionPriority = "high" | "medium" | "low";
+export type SemanticSuggestionType =
+  | "missing_expected_check"
+  | "partial_expected_check"
+  | "confidence_gap"
+  | "verification_gap"
+  | "stakeholder_gap"
+  | "recommendation_gap";
+
+export type SemanticCoverageStatus = "covered" | "partial" | "missed";
+
+export type SemanticCoverageCheck = {
+  expectedCheckId: number;
+  label: string;
+  status: SemanticCoverageStatus;
+  similarity: number;
+  bestMatchingChunk: string | null;
+  explanation: string;
+  suggestedImprovement: string | null;
+};
+
+export type SemanticSuggestion = {
+  id: string;
+  title: string;
+  description: string;
+  priority: SemanticSuggestionPriority;
+  type: SemanticSuggestionType;
+  relatedCheckLabel: string;
+  reason: string;
+  evidenceChunk: string | null;
+  suggestedAction: string;
+};
+
+export type SimilarReportReference = {
+  reportId: string;
+  workspaceId: string | null;
+  testCaseId: string | null;
+  createdAt: string;
+  agentName: string;
+  category: string;
+  finalScore: number;
+  status: string;
+  riskLevel: string;
+  summary: string;
+  similarity: number;
+};
+
+export type SemanticWorkspaceMemory = {
+  repeatedThemes: string[];
+  similarWorkspaceReports: SimilarReportReference[];
+  improvementNotes: string[];
+};
+
+export type WorkspaceSemanticTheme = {
+  label: string;
+  count: number;
+  status: "missed" | "partial" | "suggestion";
+};
+
+export type WorkspaceSemanticAnalytics = {
+  id: number;
+  workspaceId: string;
+  semanticReportCount: number;
+  averageSemanticCoverage: number;
+  totalExpectedChecks: number;
+  coveredChecks: number;
+  partialChecks: number;
+  missedChecks: number;
+  mostCommonMissedCheck: string | null;
+  mostCommonPartialCheck: string | null;
+  topSuggestionTitle: string | null;
+  topSuggestionPriority: SemanticSuggestionPriority | null;
+  repeatedSemanticThemes: WorkspaceSemanticTheme[];
+  latestSemanticReportId: string | null;
+  latestSemanticSummary: string | null;
+  generatedAt: string;
+  updatedAt: string;
+};
+
+export type SemanticInsights = {
+  semanticCoverage: {
+    totalChecks: number;
+    coveredCount: number;
+    partialCount: number;
+    missedCount: number;
+    coverageRatio: number;
+    checks: SemanticCoverageCheck[];
+  };
+  semanticSuggestions: SemanticSuggestion[];
+  similarReports: SimilarReportReference[];
+  workspaceMemory: SemanticWorkspaceMemory | null;
+  overallSemanticSummary: string;
+};
+
 export type EvaluationReport = EvaluationInput & {
   id: string;
   workspaceId?: string;
@@ -57,6 +151,10 @@ export type EvaluationReport = EvaluationInput & {
   recommendations: string[];
   confidenceQuality: ConfidenceQuality;
   summary: string;
+  semanticInsights?: SemanticInsights | null;
+  semanticModel?: string | null;
+  semanticGeneratedAt?: string | null;
+  semanticWarning?: string | null;
 };
 
 export type ScoreDimension = {
@@ -93,6 +191,14 @@ export type WorkspaceEvaluationRun = {
   summary: string;
   weaknesses: string[];
   improvements: string[];
+  hasSemanticInsights?: boolean;
+  semanticCoverageRatio?: number | null;
+  semanticCoveredCount?: number;
+  semanticPartialCount?: number;
+  semanticMissedCount?: number;
+  semanticTotalChecks?: number;
+  semanticTopSuggestionPriority?: SemanticSuggestionPriority | null;
+  semanticTopSuggestionLabel?: string | null;
 };
 
 export type WorkspaceWeaknessInsight = {
@@ -148,4 +254,5 @@ export type AgentWorkspace = {
   evaluations: WorkspaceEvaluationRun[];
   repeatedWeaknesses: WorkspaceWeaknessInsight[];
   nextRecommendations: WorkspaceRecommendation[];
+  semanticAnalytics?: WorkspaceSemanticAnalytics | null;
 };

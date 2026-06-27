@@ -1,6 +1,15 @@
 import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import type {
+  SemanticCoverageCheck,
+  SemanticInsights,
+  SemanticSuggestion,
+  SemanticSuggestionPriority,
+  SemanticSuggestionType,
+  SemanticWorkspaceMemory,
+  SimilarReportReference,
+} from "@/lib/types";
 
 import {
   classifySemanticCoverageForTestCase,
@@ -13,47 +22,8 @@ import {
   type SimilarReportMatch,
 } from "./retrieval";
 
-export type SemanticSuggestionPriority = "high" | "medium" | "low";
-export type SemanticSuggestionType =
-  | "missing_expected_check"
-  | "partial_expected_check"
-  | "confidence_gap"
-  | "verification_gap"
-  | "stakeholder_gap"
-  | "recommendation_gap";
-
-export type SemanticSuggestionItem = {
-  id: string;
-  title: string;
-  description: string;
-  priority: SemanticSuggestionPriority;
-  type: SemanticSuggestionType;
-  relatedCheckLabel: string;
-  reason: string;
-  evidenceChunk: string | null;
-  suggestedAction: string;
-};
-
-export type SemanticWorkspaceMemory = {
-  repeatedThemes: string[];
-  similarWorkspaceReports: SimilarReportMatch[];
-  improvementNotes: string[];
-};
-
-export type SemanticSuggestionPayload = {
-  semanticCoverage: {
-    totalChecks: number;
-    coveredCount: number;
-    partialCount: number;
-    missedCount: number;
-    coverageRatio: number;
-    checks: SemanticCoverageCheckResult[];
-  };
-  semanticSuggestions: SemanticSuggestionItem[];
-  similarReports: SimilarReportMatch[];
-  workspaceMemory: SemanticWorkspaceMemory | null;
-  overallSemanticSummary: string;
-};
+export type SemanticSuggestionItem = SemanticSuggestion;
+export type SemanticSuggestionPayload = SemanticInsights;
 
 export type ComposeSemanticSuggestionsOptions = {
   testCaseId?: string;
@@ -249,7 +219,7 @@ function toCoverageShape(coverage: SemanticCoverageResult) {
     partialCount: coverage.partialCount,
     missedCount: coverage.missedCount,
     coverageRatio: coverage.coverageRatio,
-    checks: coverage.checks,
+    checks: coverage.checks as SemanticCoverageCheck[],
   };
 }
 
@@ -324,7 +294,7 @@ async function loadWorkspaceMemory(options: {
 
   return {
     repeatedThemes,
-    similarWorkspaceReports,
+    similarWorkspaceReports: similarWorkspaceReports as SimilarReportReference[],
     improvementNotes,
   } satisfies SemanticWorkspaceMemory;
 }

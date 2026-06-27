@@ -5,8 +5,10 @@ import type {
   WorkspaceEvaluationRun,
   WorkspaceHealth,
   WorkspaceRecommendation,
+  WorkspaceSemanticAnalytics,
   WorkspaceWeaknessInsight,
 } from "@/lib/types";
+import { loadWorkspaceSemanticAnalyticsMap } from "@/lib/semantic/workspace-analytics";
 import { createSupabaseServerClient } from "@/lib/supabase/ssr";
 
 const HEALTH_ORDER: Record<WorkspaceHealth, number> = {
@@ -93,7 +95,40 @@ type WorkspaceLinkedReportRow = {
   summary: string;
   weaknesses: string[] | null;
   recommendations: string[] | null;
+  semantic_coverage:
+    | {
+        coveredCount?: number;
+        partialCount?: number;
+        missedCount?: number;
+        totalChecks?: number;
+        coverageRatio?: number;
+      }
+    | null;
+  semantic_suggestions:
+    | Array<{
+        priority?: "high" | "medium" | "low";
+        relatedCheckLabel?: string;
+      }>
+    | null;
 };
+
+function getTopSemanticSuggestion(
+  suggestions: NonNullable<WorkspaceLinkedReportRow["semantic_suggestions"]>
+) {
+  const priorityOrder = {
+    high: 3,
+    medium: 2,
+    low: 1,
+  } as const;
+
+  return [...suggestions]
+    .filter((suggestion) => suggestion.priority)
+    .sort(
+      (left, right) =>
+        priorityOrder[(right.priority ?? "low") as keyof typeof priorityOrder] -
+        priorityOrder[(left.priority ?? "low") as keyof typeof priorityOrder]
+    )[0];
+}
 
 function mapVersion(row: WorkspaceVersionRow): AgentWorkspaceVersion {
   return {
@@ -124,6 +159,10 @@ function mapEvaluation(row: WorkspaceEvaluationRow): WorkspaceEvaluationRun {
 }
 
 function mapWorkspaceLinkedReport(row: WorkspaceLinkedReportRow): WorkspaceEvaluationRun {
+  const semanticCoverage = row.semantic_coverage;
+  const semanticSuggestions = row.semantic_suggestions ?? [];
+  const topSuggestion = getTopSemanticSuggestion(semanticSuggestions);
+
   return {
     id: row.id,
     reportId: row.id,
@@ -137,6 +176,14 @@ function mapWorkspaceLinkedReport(row: WorkspaceLinkedReportRow): WorkspaceEvalu
     summary: row.summary,
     weaknesses: row.weaknesses ?? [],
     improvements: row.recommendations ?? [],
+    hasSemanticInsights: Boolean(semanticCoverage),
+    semanticCoverageRatio: semanticCoverage?.coverageRatio ?? null,
+    semanticCoveredCount: semanticCoverage?.coveredCount ?? 0,
+    semanticPartialCount: semanticCoverage?.partialCount ?? 0,
+    semanticMissedCount: semanticCoverage?.missedCount ?? 0,
+    semanticTotalChecks: semanticCoverage?.totalChecks ?? 0,
+    semanticTopSuggestionPriority: topSuggestion?.priority ?? null,
+    semanticTopSuggestionLabel: topSuggestion?.relatedCheckLabel ?? null,
   };
 }
 
@@ -185,7 +232,7 @@ export async function fetchWorkspaces() {
       .order("last_updated", { ascending: false });
   }
 
-  const [versionsResult, evaluationsResult, weaknessesResult, recommendationsResult, reportsResult] = await Promise.all([
+  const [versionsResult, evaluationsResult, weaknessesResult, recommendationsResult, reportsResult, semanticAnalyticsByWorkspace] = await Promise.all([
     supabase
       .from("workspace_versions")
       .select("id, workspace_id, label, released_at, summary, safety_score, evaluation_count, prompt_coverage, focus_areas")
@@ -204,9 +251,12 @@ export async function fetchWorkspaces() {
       .order("id"),
     supabase
       .from("reports")
-      .select("id, workspace_id, created_at, category, final_score, risk_level, status, summary, weaknesses, recommendations")
+      .select(
+        "id, workspace_id, created_at, category, final_score, risk_level, status, summary, weaknesses, recommendations, semantic_coverage, semantic_suggestions"
+      )
       .not("workspace_id", "is", null)
       .order("created_at", { ascending: false }),
+    loadWorkspaceSemanticAnalyticsMap(),
   ]);
 
   if (workspaceResult.error) {
@@ -278,6 +328,7 @@ export async function fetchWorkspaces() {
     evaluations: evaluationsByWorkspace.get(row.id) ?? [],
     repeatedWeaknesses: weaknessesByWorkspace.get(row.id) ?? [],
     nextRecommendations: recommendationsByWorkspace.get(row.id) ?? [],
+    semanticAnalytics: (semanticAnalyticsByWorkspace.get(row.id) ?? null) as WorkspaceSemanticAnalytics | null,
   }));
 }
 
@@ -335,6 +386,60 @@ export function getWorkspaceSummary(workspace: AgentWorkspace) {
     latestScore,
     scoreDelta: latestScore - baselineScore,
     openRecommendations: workspace.nextRecommendations.length,
+  };
+}
+
+export function getWorkspaceSemanticSummary(workspace: AgentWorkspace) {
+  if (workspace.semanticAnalytics) {
+    return {
+      semanticReportsCount: workspace.semanticAnalytics.semanticReportCount,
+      averageCoverage: Math.round(workspace.semanticAnalytics.averageSemanticCoverage * 100),
+      mostCommonMissedCheck: workspace.semanticAnalytics.mostCommonMissedCheck,
+      latestSuggestionLabel: workspace.semanticAnalytics.topSuggestionTitle,
+    };
+  }
+
+  const semanticEvaluations = workspace.evaluations.filter((evaluation) => evaluation.hasSemanticInsights);
+
+  if (semanticEvaluations.length === 0) {
+    return {
+      semanticReportsCount: 0,
+      averageCoverage: 0,
+      mostCommonMissedCheck: null as string | null,
+      latestSuggestionLabel: null as string | null,
+    };
+  }
+
+  const averageCoverage = Math.round(
+    semanticEvaluations.reduce((total, evaluation) => total + (evaluation.semanticCoverageRatio ?? 0), 0) /
+      semanticEvaluations.length *
+      100
+  );
+
+  const latestSemanticEvaluation = [...semanticEvaluations].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+  )[0];
+
+  const missedCheckCounts = new Map<string, number>();
+
+  for (const evaluation of semanticEvaluations) {
+    const label = evaluation.semanticTopSuggestionLabel?.trim();
+
+    if (!label || (evaluation.semanticMissedCount ?? 0) === 0) {
+      continue;
+    }
+
+    missedCheckCounts.set(label, (missedCheckCounts.get(label) ?? 0) + 1);
+  }
+
+  const mostCommonMissedCheck =
+    [...missedCheckCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
+
+  return {
+    semanticReportsCount: semanticEvaluations.length,
+    averageCoverage,
+    mostCommonMissedCheck,
+    latestSuggestionLabel: latestSemanticEvaluation?.semanticTopSuggestionLabel ?? null,
   };
 }
 

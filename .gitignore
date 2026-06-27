@@ -53,3 +53,4 @@ skills-lock.json
 docs/semantic-search-audit.local.md
 .tmp-semantic-*.log
 .tmp-semantic-*.json
+.tmp-workspace-semantic-*.log

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Layers3, ShieldCheck, Sparkles } from "lucide-react";
 
 import { FutureWorkspaceAction } from "@/components/workspaces/future-workspace-action";
+import { WorkspaceSemanticSignal } from "@/components/workspaces/workspace-semantic-signal";
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -118,6 +119,7 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
             ) : (
               <p className="text-muted-foreground">No evaluations yet.</p>
             )}
+            {latestEvaluation ? <div className="mt-2"><WorkspaceSemanticSignal evaluation={latestEvaluation} compact /></div> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <FutureWorkspaceAction

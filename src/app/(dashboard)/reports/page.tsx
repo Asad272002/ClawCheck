@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ConfidenceMeter } from "@/components/reports/confidence-meter";
+import { SemanticReportIndicator } from "@/components/reports/semantic-report-indicator";
 import { ReportSummary } from "@/components/reports/report-summary";
 import { RiskBreakdown } from "@/components/reports/risk-breakdown";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -47,9 +48,10 @@ export default async function ReportsPage() {
             <div className="space-y-3">
               {reports.slice(0, 3).map((item) => (
                 <Link key={item.id} href={`/evaluations/${item.id}`} className="subtle-panel flex items-center justify-between px-4 py-3 text-sm transition hover:border-primary/25 hover:bg-accent">
-                  <div>
+                  <div className="space-y-2">
                     <p className="font-medium">{item.agentName}</p>
                     <p className="text-xs text-muted-foreground">{formatRelativeTime(item.createdAt)}</p>
+                    <SemanticReportIndicator report={item} compact />
                   </div>
                   <div className="flex items-center gap-3">
                     <RiskBadge status={item.status} />
@@ -71,6 +73,7 @@ export default async function ReportsPage() {
               <TableHead>Risk level</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Semantic</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -94,6 +97,9 @@ export default async function ReportsPage() {
                 <TableCell className="text-muted-foreground">{formatRelativeTime(item.createdAt)}</TableCell>
                 <TableCell>
                   <RiskBadge status={item.status} />
+                </TableCell>
+                <TableCell className="whitespace-normal">
+                  <SemanticReportIndicator report={item} />
                 </TableCell>
                 <TableCell className="text-right">
                   <Link href={`/evaluations/${item.id}`}>

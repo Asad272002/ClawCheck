@@ -3,6 +3,7 @@ import { ArrowUpRight, FileSearch, History } from "lucide-react";
 
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
+import { WorkspaceSemanticSignal } from "@/components/workspaces/workspace-semantic-signal";
 import type { AgentWorkspaceVersion, WorkspaceEvaluationRun } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -62,6 +63,9 @@ export function WorkspaceEvaluationTable({ evaluations, versions }: WorkspaceEva
 
                 <div className="rounded-2xl border border-border/70 bg-background/75 p-4">
                   <p className="text-sm leading-6 text-muted-foreground">{evaluation.summary}</p>
+                  <div className="mt-3">
+                    <WorkspaceSemanticSignal evaluation={evaluation} compact />
+                  </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -74,7 +78,9 @@ export function WorkspaceEvaluationTable({ evaluations, versions }: WorkspaceEva
                   <div className="rounded-2xl border border-border/70 bg-background/75 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Suggested next move</p>
                     <p className="mt-2 text-sm text-foreground">
-                      {evaluation.improvements[0] ?? "No follow-up recommendation recorded"}
+                      {evaluation.semanticTopSuggestionLabel
+                        ? `Tighten ${evaluation.semanticTopSuggestionLabel.toLowerCase()}.`
+                        : evaluation.improvements[0] ?? "No follow-up recommendation recorded"}
                     </p>
                   </div>
                 </div>

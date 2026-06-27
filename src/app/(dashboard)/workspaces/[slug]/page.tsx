@@ -10,6 +10,7 @@ import {
   type WorkspaceMembersPanelState,
 } from "@/components/workspaces/workspace-members-panel";
 import { WorkspaceEvaluationTable } from "@/components/workspaces/workspace-evaluation-table";
+import { WorkspaceSemanticSignal } from "@/components/workspaces/workspace-semantic-signal";
 import { WorkspaceTrendChart } from "@/components/workspaces/workspace-trend-chart";
 import { WorkspaceVersionList } from "@/components/workspaces/workspace-version-list";
 import { WorkspaceWeaknessInsights } from "@/components/workspaces/workspace-weakness-insights";
@@ -26,6 +27,7 @@ import {
 import {
   fetchWorkspaces,
   findWorkspaceBySlug,
+  getWorkspaceSemanticSummary,
   getWorkspaceSummary,
   getWorkspaceTrendData,
 } from "@/lib/db/workspaces";
@@ -133,6 +135,7 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
   }
 
   const summary = getWorkspaceSummary(workspace);
+  const semanticSummary = getWorkspaceSemanticSummary(workspace);
   const trendData = getWorkspaceTrendData(workspace);
   const workspaceMembers = await fetchWorkspaceMembers(workspace.id);
   const latestEvaluation = [...workspace.evaluations].sort(
@@ -221,10 +224,15 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
                   {latestEvaluation?.category ?? "No runs yet"}
                 </p>
                 {latestEvaluation ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <RiskBadge status={latestEvaluation.status} />
-                    <RiskBadge riskLevel={latestEvaluation.riskLevel} />
-                  </div>
+                  <>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <RiskBadge status={latestEvaluation.status} />
+                      <RiskBadge riskLevel={latestEvaluation.riskLevel} />
+                    </div>
+                    <div className="mt-3">
+                      <WorkspaceSemanticSignal evaluation={latestEvaluation} compact />
+                    </div>
+                  </>
                 ) : null}
               </div>
               <div className="subtle-panel px-4 py-4">
@@ -311,6 +319,39 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
         <WorkspaceTrendChart data={trendData} />
         <WorkspaceVersionList versions={workspace.versions} />
       </div>
+
+      {semanticSummary.semanticReportsCount > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-4">
+          <div className="surface-card p-5">
+            <p className="text-sm font-medium text-muted-foreground">Semantic-linked reports</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
+              {semanticSummary.semanticReportsCount}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Workspace reports already carrying persisted semantic review data.</p>
+          </div>
+          <div className="surface-card p-5">
+            <p className="text-sm font-medium text-muted-foreground">Average semantic coverage</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
+              {semanticSummary.averageCoverage}%
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Average expected-check coverage across semantic-linked runs.</p>
+          </div>
+          <div className="surface-card p-5">
+            <p className="text-sm font-medium text-muted-foreground">Most common missed check</p>
+            <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+              {semanticSummary.mostCommonMissedCheck ?? "No repeated missed check"}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Derived from the top missed semantic theme in linked reports.</p>
+          </div>
+          <div className="surface-card p-5">
+            <p className="text-sm font-medium text-muted-foreground">Latest semantic follow-up</p>
+            <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+              {semanticSummary.latestSuggestionLabel ?? "No semantic follow-up stored"}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">A quick signal for the next workspace iteration review.</p>
+          </div>
+        </div>
+      ) : null}
 
       <WorkspaceEvaluationTable evaluations={workspace.evaluations} versions={workspace.versions} />
 

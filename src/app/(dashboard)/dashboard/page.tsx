@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 import { OverviewChartCard } from "@/components/dashboard/overview-chart-card";
+import { SemanticReportIndicator } from "@/components/reports/semantic-report-indicator";
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -290,6 +291,7 @@ export default async function DashboardPage() {
                         <TableHead>Score</TableHead>
                         <TableHead>Risk</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Semantic</TableHead>
                         <TableHead>Action</TableHead>
                         <TableHead className="text-right">Updated</TableHead>
                       </TableRow>
@@ -313,6 +315,9 @@ export default async function DashboardPage() {
                           </TableCell>
                           <TableCell>
                             <RiskBadge status={report.status} />
+                          </TableCell>
+                          <TableCell className="whitespace-normal">
+                            <SemanticReportIndicator report={report} />
                           </TableCell>
                           <TableCell>
                             <Link href={`/evaluations/${report.id}`}>

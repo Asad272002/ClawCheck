@@ -5,6 +5,7 @@ import { AlertTriangle, BarChart3, CheckCircle2, ClipboardList, FileWarning, Shi
 import { ConfidenceMeter } from "@/components/reports/confidence-meter";
 import { RiskBreakdown } from "@/components/reports/risk-breakdown";
 import { ReportSummary } from "@/components/reports/report-summary";
+import { SemanticInsightsPanel } from "@/components/evaluation/semantic-insights-panel";
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EvaluationReport } from "@/lib/types";
@@ -217,6 +218,8 @@ export function EvaluationResults({ report }: EvaluationResultsProps) {
           </Card>
         </div>
       </div>
+
+      <SemanticInsightsPanel report={report} />
     </div>
   );
 }
