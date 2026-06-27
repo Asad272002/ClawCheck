@@ -392,10 +392,19 @@ export function getWorkspaceSummary(workspace: AgentWorkspace) {
 export function getWorkspaceSemanticSummary(workspace: AgentWorkspace) {
   if (workspace.semanticAnalytics) {
     return {
+      hasPersistedAnalytics: true,
       semanticReportsCount: workspace.semanticAnalytics.semanticReportCount,
       averageCoverage: Math.round(workspace.semanticAnalytics.averageSemanticCoverage * 100),
+      coveredChecks: workspace.semanticAnalytics.coveredChecks,
+      partialChecks: workspace.semanticAnalytics.partialChecks,
+      missedChecks: workspace.semanticAnalytics.missedChecks,
       mostCommonMissedCheck: workspace.semanticAnalytics.mostCommonMissedCheck,
+      mostCommonPartialCheck: workspace.semanticAnalytics.mostCommonPartialCheck,
       latestSuggestionLabel: workspace.semanticAnalytics.topSuggestionTitle,
+      topSuggestionPriority: workspace.semanticAnalytics.topSuggestionPriority,
+      repeatedThemes: workspace.semanticAnalytics.repeatedSemanticThemes,
+      latestReportId: workspace.semanticAnalytics.latestSemanticReportId,
+      latestSummary: workspace.semanticAnalytics.latestSemanticSummary,
     };
   }
 
@@ -403,10 +412,19 @@ export function getWorkspaceSemanticSummary(workspace: AgentWorkspace) {
 
   if (semanticEvaluations.length === 0) {
     return {
+      hasPersistedAnalytics: false,
       semanticReportsCount: 0,
       averageCoverage: 0,
+      coveredChecks: 0,
+      partialChecks: 0,
+      missedChecks: 0,
       mostCommonMissedCheck: null as string | null,
+      mostCommonPartialCheck: null as string | null,
       latestSuggestionLabel: null as string | null,
+      topSuggestionPriority: null as "high" | "medium" | "low" | null,
+      repeatedThemes: [],
+      latestReportId: null as string | null,
+      latestSummary: null as string | null,
     };
   }
 
@@ -421,25 +439,91 @@ export function getWorkspaceSemanticSummary(workspace: AgentWorkspace) {
   )[0];
 
   const missedCheckCounts = new Map<string, number>();
+  const partialCheckCounts = new Map<string, number>();
+  const repeatedThemes = new Map<string, { label: string; count: number; status: "missed" | "partial" | "suggestion" }>();
+  let coveredChecks = 0;
+  let partialChecks = 0;
+  let missedChecks = 0;
 
   for (const evaluation of semanticEvaluations) {
+    coveredChecks += evaluation.semanticCoveredCount ?? 0;
+    partialChecks += evaluation.semanticPartialCount ?? 0;
+    missedChecks += evaluation.semanticMissedCount ?? 0;
+
     const label = evaluation.semanticTopSuggestionLabel?.trim();
 
     if (!label || (evaluation.semanticMissedCount ?? 0) === 0) {
-      continue;
+    } else {
+      missedCheckCounts.set(label, (missedCheckCounts.get(label) ?? 0) + 1);
     }
 
-    missedCheckCounts.set(label, (missedCheckCounts.get(label) ?? 0) + 1);
+    if (label && (evaluation.semanticPartialCount ?? 0) > 0) {
+      partialCheckCounts.set(label, (partialCheckCounts.get(label) ?? 0) + 1);
+    }
+
+    if (label) {
+      const missedThemeKey = `missed:${label}`;
+      const partialThemeKey = `partial:${label}`;
+      const suggestionThemeKey = `suggestion:${label}`;
+
+      if ((evaluation.semanticMissedCount ?? 0) > 0) {
+        const existingMissed = repeatedThemes.get(missedThemeKey);
+        if (existingMissed) {
+          existingMissed.count += 1;
+        } else {
+          repeatedThemes.set(missedThemeKey, {
+            label,
+            count: 1,
+            status: "missed",
+          });
+        }
+      }
+
+      if ((evaluation.semanticPartialCount ?? 0) > 0) {
+        const existingPartial = repeatedThemes.get(partialThemeKey);
+        if (existingPartial) {
+          existingPartial.count += 1;
+        } else {
+          repeatedThemes.set(partialThemeKey, {
+            label,
+            count: 1,
+            status: "partial",
+          });
+        }
+      }
+
+      const existingSuggestion = repeatedThemes.get(suggestionThemeKey);
+      if (existingSuggestion) {
+        existingSuggestion.count += 1;
+      } else {
+        repeatedThemes.set(suggestionThemeKey, {
+          label,
+          count: 1,
+          status: "suggestion",
+        });
+      }
+    }
   }
 
   const mostCommonMissedCheck =
     [...missedCheckCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
+  const mostCommonPartialCheck =
+    [...partialCheckCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
 
   return {
+    hasPersistedAnalytics: false,
     semanticReportsCount: semanticEvaluations.length,
     averageCoverage,
+    coveredChecks,
+    partialChecks,
+    missedChecks,
     mostCommonMissedCheck,
+    mostCommonPartialCheck,
     latestSuggestionLabel: latestSemanticEvaluation?.semanticTopSuggestionLabel ?? null,
+    topSuggestionPriority: latestSemanticEvaluation?.semanticTopSuggestionPriority ?? null,
+    repeatedThemes: [...repeatedThemes.values()].sort((left, right) => right.count - left.count).slice(0, 6),
+    latestReportId: latestSemanticEvaluation?.reportId ?? null,
+    latestSummary: latestSemanticEvaluation?.summary ?? null,
   };
 }
 
@@ -461,6 +545,125 @@ export function getWorkspaceOverviewStats(workspaces: AgentWorkspace[]) {
     averageLatestScore,
     highRiskRuns: allEvaluations.filter((evaluation) => evaluation.riskLevel === "High").length,
     improvingCount: workspaces.filter((workspace) => workspace.health === "Improving").length,
+  };
+}
+
+export function getWorkspaceSemanticOverview(workspaces: AgentWorkspace[]) {
+  const workspaceSummaries = workspaces
+    .map((workspace) => ({
+      workspace,
+      summary: getWorkspaceSemanticSummary(workspace),
+    }))
+    .filter(({ summary }) => summary.semanticReportsCount > 0);
+
+  if (workspaceSummaries.length === 0) {
+    return {
+      analyticsWorkspaceCount: 0,
+      semanticReportCount: 0,
+      averageCoverage: 0,
+      totalPartialChecks: 0,
+      totalMissedChecks: 0,
+      topMissedCheck: null as string | null,
+      topPartialCheck: null as string | null,
+      topSuggestionTitle: null as string | null,
+      topSuggestionPriority: null as "high" | "medium" | "low" | null,
+      latestSemanticReportId: null as string | null,
+      latestWorkspaceSlug: null as string | null,
+      repeatedThemes: [] as Array<{
+        label: string;
+        count: number;
+        status: "missed" | "partial" | "suggestion";
+        workspaceSlug: string;
+      }>,
+    };
+  }
+
+  const missedCounts = new Map<string, number>();
+  const partialCounts = new Map<string, number>();
+  const repeatedThemes = new Map<
+    string,
+    {
+      label: string;
+      count: number;
+      status: "missed" | "partial" | "suggestion";
+      workspaceSlug: string;
+    }
+  >();
+  const priorityOrder = {
+    high: 3,
+    medium: 2,
+    low: 1,
+  } as const;
+
+  let semanticReportCount = 0;
+  let weightedCoverageTotal = 0;
+  let totalPartialChecks = 0;
+  let totalMissedChecks = 0;
+
+  for (const { workspace, summary } of workspaceSummaries) {
+    semanticReportCount += summary.semanticReportsCount;
+    weightedCoverageTotal += summary.averageCoverage * summary.semanticReportsCount;
+    totalPartialChecks += summary.partialChecks;
+    totalMissedChecks += summary.missedChecks;
+
+    if (summary.mostCommonMissedCheck) {
+      missedCounts.set(summary.mostCommonMissedCheck, (missedCounts.get(summary.mostCommonMissedCheck) ?? 0) + 1);
+    }
+
+    if (summary.mostCommonPartialCheck) {
+      partialCounts.set(summary.mostCommonPartialCheck, (partialCounts.get(summary.mostCommonPartialCheck) ?? 0) + 1);
+    }
+
+    for (const theme of summary.repeatedThemes) {
+      const key = `${theme.status}:${theme.label}`;
+      const existing = repeatedThemes.get(key);
+
+      if (existing) {
+        existing.count += theme.count;
+        continue;
+      }
+
+      repeatedThemes.set(key, {
+        ...theme,
+        workspaceSlug: workspace.slug,
+      });
+    }
+  }
+
+  const latestWorkspace = [...workspaceSummaries].sort((left, right) => {
+    const leftTime = left.summary.latestReportId ? new Date(left.workspace.lastUpdated).getTime() : 0;
+    const rightTime = right.summary.latestReportId ? new Date(right.workspace.lastUpdated).getTime() : 0;
+
+    return rightTime - leftTime;
+  })[0];
+
+  const topSuggestionWorkspace = [...workspaceSummaries]
+    .filter(({ summary }) => summary.topSuggestionPriority)
+    .sort((left, right) => {
+      const priorityDelta =
+        priorityOrder[right.summary.topSuggestionPriority ?? "low"] -
+        priorityOrder[left.summary.topSuggestionPriority ?? "low"];
+
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return new Date(right.workspace.lastUpdated).getTime() - new Date(left.workspace.lastUpdated).getTime();
+    })[0];
+
+  return {
+    analyticsWorkspaceCount: workspaceSummaries.length,
+    semanticReportCount,
+    averageCoverage: Math.round(weightedCoverageTotal / Math.max(semanticReportCount, 1)),
+    totalPartialChecks,
+    totalMissedChecks,
+    topMissedCheck: [...missedCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null,
+    topPartialCheck: [...partialCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null,
+    topSuggestionTitle: topSuggestionWorkspace?.summary.latestSuggestionLabel ?? null,
+    topSuggestionPriority: topSuggestionWorkspace?.summary.topSuggestionPriority ?? null,
+    latestSemanticReportId: latestWorkspace?.summary.latestReportId ?? null,
+    latestWorkspaceSlug: latestWorkspace?.workspace.slug ?? null,
+    repeatedThemes: [...repeatedThemes.values()].sort((left, right) => right.count - left.count).slice(0, 6),
   };
 }
 

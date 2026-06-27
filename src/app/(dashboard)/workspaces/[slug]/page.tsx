@@ -321,34 +321,96 @@ export default async function WorkspaceDetailPage({ params }: WorkspaceDetailPag
       </div>
 
       {semanticSummary.semanticReportsCount > 0 ? (
-        <div className="grid gap-4 lg:grid-cols-4">
-          <div className="surface-card p-5">
-            <p className="text-sm font-medium text-muted-foreground">Semantic-linked reports</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
-              {semanticSummary.semanticReportsCount}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">Workspace reports already carrying persisted semantic review data.</p>
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="section-panel p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-foreground">Semantic analytics summary</p>
+                <p className="text-sm text-muted-foreground">
+                  Persisted workspace-level semantic analytics are being used here when available, with the standard run history still shown below.
+                </p>
+              </div>
+              {semanticSummary.latestReportId ? (
+                <Link
+                  href={`/evaluations/${semanticSummary.latestReportId}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+                >
+                  Open latest semantic report
+                  <ArrowRight className="size-4" />
+                </Link>
+              ) : null}
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Semantic reports reviewed</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {semanticSummary.semanticReportsCount}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Linked workspace reports with saved semantic review data.</p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Average semantic coverage</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {semanticSummary.averageCoverage}%
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {semanticSummary.coveredChecks} covered, {semanticSummary.partialChecks} partial, {semanticSummary.missedChecks} missed.
+                </p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Top next action</p>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+                  {semanticSummary.latestSuggestionLabel ?? "No semantic follow-up stored"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {semanticSummary.topSuggestionPriority
+                    ? `${semanticSummary.topSuggestionPriority} priority follow-up from persisted semantic reports`
+                    : "Next semantic action will appear here once linked reports are reviewed."}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="surface-card p-5">
-            <p className="text-sm font-medium text-muted-foreground">Average semantic coverage</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
-              {semanticSummary.averageCoverage}%
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">Average expected-check coverage across semantic-linked runs.</p>
-          </div>
-          <div className="surface-card p-5">
-            <p className="text-sm font-medium text-muted-foreground">Most common missed check</p>
-            <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
-              {semanticSummary.mostCommonMissedCheck ?? "No repeated missed check"}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">Derived from the top missed semantic theme in linked reports.</p>
-          </div>
-          <div className="surface-card p-5">
-            <p className="text-sm font-medium text-muted-foreground">Latest semantic follow-up</p>
-            <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
-              {semanticSummary.latestSuggestionLabel ?? "No semantic follow-up stored"}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">A quick signal for the next workspace iteration review.</p>
+
+          <div className="section-panel p-6">
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">Most repeated review points</p>
+              <p className="text-sm text-muted-foreground">
+                The missed and partial signals most worth fixing before the next workspace approval pass.
+              </p>
+            </div>
+            <div className="mt-5 space-y-3">
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Most common missed review point</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {semanticSummary.mostCommonMissedCheck ?? "No repeated missed point yet"}
+                </p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Most common weak review point</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {semanticSummary.mostCommonPartialCheck ?? "No repeated partial point yet"}
+                </p>
+              </div>
+              {semanticSummary.repeatedThemes.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {semanticSummary.repeatedThemes.slice(0, 5).map((theme) => (
+                    <span
+                      key={`${theme.status}-${theme.label}`}
+                      className="rounded-full border border-border/80 bg-background/75 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                    >
+                      {theme.label} - {theme.count} {theme.status}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {semanticSummary.latestSummary ? (
+                <div className="rounded-2xl border border-border/70 bg-background/75 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest semantic summary</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{semanticSummary.latestSummary}</p>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}

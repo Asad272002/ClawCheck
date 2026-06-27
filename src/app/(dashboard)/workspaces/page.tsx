@@ -8,12 +8,14 @@ import {
   fetchWorkspaces,
   getGlobalWeaknesses,
   getUpcomingRecommendations,
+  getWorkspaceSemanticOverview,
   getWorkspaceOverviewStats,
 } from "@/lib/db/workspaces";
 
 export default async function WorkspacesPage() {
   const workspaces = await fetchWorkspaces();
   const overviewStats = getWorkspaceOverviewStats(workspaces);
+  const semanticOverview = getWorkspaceSemanticOverview(workspaces);
   const weaknessHotspots = getGlobalWeaknesses(workspaces).slice(0, 4);
   const upcomingRecommendations = getUpcomingRecommendations(workspaces).slice(0, 4);
 
@@ -106,6 +108,74 @@ export default async function WorkspacesPage() {
           </p>
         </div>
       </div>
+
+      {semanticOverview.analyticsWorkspaceCount > 0 ? (
+        <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="section-panel p-6">
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">Workspace semantic overview</p>
+              <p className="text-sm text-muted-foreground">
+                Persisted semantic analytics are available for {semanticOverview.analyticsWorkspaceCount} workspace
+                {semanticOverview.analyticsWorkspaceCount === 1 ? "" : "s"}.
+              </p>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Semantic reports reviewed</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {semanticOverview.semanticReportCount}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Saved semantic-linked workspace reports.</p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Average semantic coverage</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {semanticOverview.averageCoverage}%
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {semanticOverview.totalPartialChecks} partial and {semanticOverview.totalMissedChecks} missed review points.
+                </p>
+              </div>
+              <div className="subtle-panel px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Top missed review point</p>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+                  {semanticOverview.topMissedCheck ?? "No repeated gap yet"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {semanticOverview.topPartialCheck
+                    ? `Weakest partial point: ${semanticOverview.topPartialCheck}`
+                    : "Partial review points will appear here once they repeat."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="section-panel p-6">
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">Repeated semantic themes</p>
+              <p className="text-sm text-muted-foreground">
+                Compact cross-workspace signals you can use before opening the full report detail.
+              </p>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {semanticOverview.repeatedThemes.slice(0, 6).map((theme) => (
+                <span
+                  key={`${theme.status}-${theme.label}`}
+                  className="rounded-full border border-border/80 bg-background/75 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                >
+                  {theme.label} - {theme.count} {theme.status}
+                </span>
+              ))}
+            </div>
+            {semanticOverview.topSuggestionTitle ? (
+              <div className="mt-4 rounded-2xl border border-border/70 bg-background/75 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Top next semantic action</p>
+                <p className="mt-2 text-sm font-medium text-foreground">{semanticOverview.topSuggestionTitle}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-2">
         {workspaces.map((workspace) => (

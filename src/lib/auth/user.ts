@@ -36,6 +36,38 @@ function deriveDisplayName(email: string | undefined, fullName: string | null | 
   return "Workspace User";
 }
 
+function buildFallbackUser(user: {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
+  identities?: Array<{ provider?: string | null }> | null;
+}): AppUser {
+  const fullName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : null;
+  const avatarUrl =
+    typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null;
+  const providers = Array.isArray(user.app_metadata?.providers)
+    ? user.app_metadata.providers.filter((provider): provider is string => typeof provider === "string")
+    : Array.isArray(user.identities)
+      ? user.identities
+          .map((identity) => identity.provider)
+          .filter((provider): provider is string => typeof provider === "string")
+      : [];
+
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    name: deriveDisplayName(user.email, fullName),
+    avatarUrl,
+    providers,
+  };
+}
+
 async function syncProfileAndClaimLegacyAccess(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
   // Supabase admin queries are intentionally cast until Database types are generated for the project.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,7 +147,14 @@ async function buildCurrentUser(redirectOnMissing: boolean) {
     return null;
   }
 
-  await syncProfileAndClaimLegacyAccess(user);
+  try {
+    await syncProfileAndClaimLegacyAccess(user);
+  } catch (error) {
+    console.warn(
+      "Skipping profile sync and legacy workspace claim for this request.",
+      error instanceof Error ? error.message : error
+    );
+  }
 
   // Supabase admin queries are intentionally cast until Database types are generated for the project.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -127,24 +166,19 @@ async function buildCurrentUser(redirectOnMissing: boolean) {
     .single();
 
   if (error) {
-    throw new Error(`Unable to load user profile: ${error.message}`);
+    console.warn(`Unable to load synced user profile for ${user.id}. Falling back to auth metadata. ${error.message}`);
+    return buildFallbackUser(user);
   }
 
   const typedProfile = profile as ProfileRow;
-  const providers = Array.isArray(user.app_metadata?.providers)
-    ? user.app_metadata.providers.filter((provider): provider is string => typeof provider === "string")
-    : Array.isArray(user.identities)
-      ? user.identities
-          .map((identity) => identity.provider)
-          .filter((provider): provider is string => typeof provider === "string")
-      : [];
+  const fallbackUser = buildFallbackUser(user);
 
   return {
     id: user.id,
     email: typedProfile.email ?? user.email ?? "",
     name: deriveDisplayName(user.email, typedProfile.full_name),
     avatarUrl: typedProfile.avatar_url,
-    providers,
+    providers: fallbackUser.providers,
   } satisfies AppUser;
 }
 

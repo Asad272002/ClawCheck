@@ -7,13 +7,19 @@ import { RiskBadge } from "@/components/shared/risk-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getLatestWorkspaceVersion, getWorkspaceSummary } from "@/lib/db/workspaces";
+import { getLatestWorkspaceVersion, getWorkspaceSemanticSummary, getWorkspaceSummary } from "@/lib/db/workspaces";
 import type { AgentWorkspace } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils";
 
 type WorkspaceCardProps = {
   workspace: AgentWorkspace;
 };
+
+const semanticPriorityToneClasses = {
+  high: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  low: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+} as const;
 
 function HealthPill({ health }: { health: AgentWorkspace["health"] }) {
   const classes =
@@ -28,6 +34,7 @@ function HealthPill({ health }: { health: AgentWorkspace["health"] }) {
 
 export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
   const summary = getWorkspaceSummary(workspace);
+  const semanticSummary = getWorkspaceSemanticSummary(workspace);
   const latestVersion = getLatestWorkspaceVersion(workspace);
   const latestEvaluation = [...workspace.evaluations].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
@@ -79,11 +86,17 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
             </p>
           </div>
           <div className="subtle-panel px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Repeated weaknesses</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {workspace.repeatedWeaknesses.length}
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              {semanticSummary.semanticReportsCount > 0 ? "Semantic coverage" : "Repeated weaknesses"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{summary.openRecommendations} next actions queued</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              {semanticSummary.semanticReportsCount > 0 ? `${semanticSummary.averageCoverage}%` : workspace.repeatedWeaknesses.length}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {semanticSummary.semanticReportsCount > 0
+                ? `${semanticSummary.partialChecks} partial and ${semanticSummary.missedChecks} missed review points`
+                : `${summary.openRecommendations} next actions queued`}
+            </p>
           </div>
         </div>
 
@@ -108,7 +121,9 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
 
         <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="space-y-2 text-sm">
-            <p className="font-medium text-foreground">Latest run</p>
+            <p className="font-medium text-foreground">
+              {semanticSummary.semanticReportsCount > 0 ? "Semantic summary" : "Latest run"}
+            </p>
             {latestEvaluation ? (
               <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
                 <span>{latestEvaluation.category}</span>
@@ -119,7 +134,34 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
             ) : (
               <p className="text-muted-foreground">No evaluations yet.</p>
             )}
-            {latestEvaluation ? <div className="mt-2"><WorkspaceSemanticSignal evaluation={latestEvaluation} compact /></div> : null}
+            {semanticSummary.semanticReportsCount > 0 ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                    {semanticSummary.semanticReportsCount} semantic report{semanticSummary.semanticReportsCount === 1 ? "" : "s"}
+                  </span>
+                  {workspace.semanticAnalytics?.topSuggestionPriority ? (
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${semanticPriorityToneClasses[workspace.semanticAnalytics.topSuggestionPriority]}`}
+                    >
+                      {workspace.semanticAnalytics.topSuggestionPriority} priority
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {semanticSummary.mostCommonMissedCheck
+                    ? `Missed most often: ${semanticSummary.mostCommonMissedCheck}.`
+                    : "Persisted semantic analytics are available for this workspace."}
+                </p>
+                {semanticSummary.latestSuggestionLabel ? (
+                  <p className="text-sm text-foreground">{semanticSummary.latestSuggestionLabel}</p>
+                ) : null}
+              </div>
+            ) : latestEvaluation ? (
+              <div className="mt-2">
+                <WorkspaceSemanticSignal evaluation={latestEvaluation} compact />
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <FutureWorkspaceAction

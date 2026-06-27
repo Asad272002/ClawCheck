@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireCurrentUser } from "@/lib/auth/user";
 import { getReports } from "@/lib/db/reports";
-import { fetchWorkspaces, getAccessibleWorkspaceDashboard } from "@/lib/db/workspaces";
+import { fetchWorkspaces, getAccessibleWorkspaceDashboard, getWorkspaceSemanticOverview } from "@/lib/db/workspaces";
 import type { AgentWorkspace, RiskLevel, WorkspaceEvaluationRun } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -177,6 +177,7 @@ export default async function DashboardPage() {
     stable: dashboard.workspaces.filter((workspace) => workspace.health === "Stable").length,
     attention: dashboard.workspaces.filter((workspace) => workspace.health === "Needs attention").length,
   };
+  const semanticOverview = getWorkspaceSemanticOverview(dashboard.workspaces);
   const overviewFocusCards = [
     {
       title: "Workspace-linked reports",
@@ -194,6 +195,29 @@ export default async function DashboardPage() {
       helper: "Weakness themes showing up more than once",
     },
   ];
+  const semanticOverviewCards =
+    semanticOverview.analyticsWorkspaceCount > 0
+      ? [
+          {
+            title: "Semantic reports reviewed",
+            value: semanticOverview.semanticReportCount,
+            helper: `${semanticOverview.analyticsWorkspaceCount} workspace${semanticOverview.analyticsWorkspaceCount === 1 ? "" : "s"} with persisted semantic analytics`,
+          },
+          {
+            title: "Average semantic coverage",
+            value: `${semanticOverview.averageCoverage}%`,
+            helper: `${semanticOverview.totalPartialChecks} partial and ${semanticOverview.totalMissedChecks} missed review points across saved semantic runs`,
+          },
+          {
+            title: "Most common missed review point",
+            value: semanticOverview.topMissedCheck ?? "No repeated gap yet",
+            helper:
+              semanticOverview.topPartialCheck
+                ? `Most common weak point: ${semanticOverview.topPartialCheck}`
+                : "Partial review points will show here once more linked semantic runs are saved.",
+          },
+        ]
+      : [];
   const reportAverageScore =
     reports.length > 0 ? Math.round(reports.reduce((total, report) => total + report.finalScore, 0) / reports.length) : 0;
   const recentReports = reports.slice(0, 5);
@@ -483,6 +507,57 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {semanticOverviewCards.length > 0 ? (
+        <Card className="section-panel overflow-hidden">
+          <CardContent className="space-y-5 p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-foreground">Semantic workspace snapshot</p>
+                <p className="text-sm text-muted-foreground">
+                  Persisted semantic analytics are being reused here, so this view stays stable even before detailed report pages are opened.
+                </p>
+              </div>
+              {semanticOverview.latestSemanticReportId ? (
+                <Link
+                  href={`/evaluations/${semanticOverview.latestSemanticReportId}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
+                >
+                  Open latest semantic report
+                  <ArrowRight className="size-4" />
+                </Link>
+              ) : null}
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              {semanticOverviewCards.map((card) => (
+                <div key={card.title} className="subtle-panel px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{card.title}</p>
+                  <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">{card.value}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{card.helper}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {semanticOverview.repeatedThemes.slice(0, 4).map((theme) => (
+                  <span
+                    key={`${theme.status}-${theme.label}`}
+                    className="rounded-full border border-border/80 bg-background/75 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {theme.label} - {theme.count} {theme.status}
+                  </span>
+                ))}
+              </div>
+              {semanticOverview.topSuggestionTitle ? (
+                <div className="text-sm text-muted-foreground">
+                  Top semantic follow-up:{" "}
+                  <span className="font-semibold text-foreground">{semanticOverview.topSuggestionTitle}</span>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
         {overviewCards.map((card) => (
