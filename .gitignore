@@ -54,3 +54,5 @@ docs/semantic-search-audit.local.md
 .tmp-semantic-*.log
 .tmp-semantic-*.json
 .tmp-workspace-semantic-*.log
+.tmp-phase7c-*.log
+.tmp-phase7c-*.json
