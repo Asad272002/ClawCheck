@@ -3,10 +3,10 @@ import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 import {
-  EMBEDDING_DIMENSIONS,
   EmbeddingConfigurationError,
   EmbeddingProviderError,
   embedTexts,
+  getEmbeddingConfig,
 } from "./embeddings";
 
 type ReindexTargetKey =
@@ -35,6 +35,7 @@ export type SemanticReindexOptions = {
 
 export type SemanticReindexReport = {
   provider: {
+    provider: string;
     model: string;
     dimensions: number;
   } | null;
@@ -272,6 +273,7 @@ const TARGETS = [
 export async function previewSemanticReindex(options: SemanticReindexOptions = {}): Promise<SemanticReindexReport> {
   const admin = getSupabaseAdmin();
   const force = Boolean(options.force);
+  const config = getEmbeddingConfig();
 
   const targets = await Promise.all(
     TARGETS.map(async (target) => {
@@ -290,7 +292,11 @@ export async function previewSemanticReindex(options: SemanticReindexOptions = {
   );
 
   return {
-    provider: null,
+    provider: {
+      provider: config.provider,
+      model: config.model,
+      dimensions: config.dimensions,
+    },
     targets,
   };
 }
@@ -367,27 +373,24 @@ export async function runSemanticReindex(options: SemanticReindexOptions = {}): 
   const force = Boolean(options.force);
   const batchSize = ensureBatchSize(options.batchSize);
   const preview = await previewSemanticReindex(options);
+  const config = getEmbeddingConfig();
 
   try {
     const rowsByTarget = await Promise.all(TARGETS.map((target) => target.loadRows(admin, force)));
     const targets = [] as ReindexTargetSummary[];
-    let providerModel: string | null = null;
 
     for (let index = 0; index < TARGETS.length; index += 1) {
       const target = TARGETS[index] as TargetDefinition<unknown>;
       const rows = rowsByTarget[index] as unknown[];
       const targetSummary = await processTarget(admin, target, rows, batchSize);
       targets.push(targetSummary);
-
-      if (providerModel === null) {
-        providerModel = process.env.OPENAI_EMBEDDING_MODEL?.trim() || "text-embedding-3-small";
-      }
     }
 
     return {
       provider: {
-        model: providerModel ?? "text-embedding-3-small",
-        dimensions: EMBEDDING_DIMENSIONS,
+        provider: config.provider,
+        model: config.model,
+        dimensions: config.dimensions,
       },
       targets,
     };
